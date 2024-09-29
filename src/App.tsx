@@ -1,31 +1,48 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+import { useContext, useEffect } from 'react';
+import styles from './App.module.scss';
 
-function App() {
-  const [count, setCount] = useState(0);
+import { AuthContext } from './contexts/AuthContext';
+import { LogoutButton, Chat, Login } from './components';
+import magic from './utils/magic';
+
+const App = () => {
+  const { user, setUser } = useContext(AuthContext);
+
+  useEffect(() => {
+    // Check if user is being redirected back from Magic link
+    const handleMagicLogin = async () => {
+      try {
+        if (window.location.search.includes('magic_')) {
+          const didToken = await magic.auth.loginWithCredential();
+          const userInfo = await magic.user.getMetadata();
+          console.log('User info:', userInfo);
+          console.log('didToken:', didToken);
+
+          setUser(userInfo);
+        }
+      } catch (error) {
+        console.error('Magic login error:', error);
+      }
+    };
+
+    handleMagicLogin();
+  }, [setUser]);
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>count is {count}</button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">Click on the Vite and React logos to learn more</p>
-    </>
+    <div className={styles.appContainer}>
+      {user ? (
+        <>
+          <header className={styles.header}>
+            <h1>Matrix Solana Client</h1>
+            <LogoutButton />
+          </header>
+          <Chat />
+        </>
+      ) : (
+        <Login />
+      )}
+    </div>
   );
-}
+};
 
 export default App;
