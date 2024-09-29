@@ -1,6 +1,16 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
-import { Room, RoomMember, MatrixClient, MatrixEvent, EventType, RoomEvent, ClientEvent } from 'matrix-js-sdk';
+import { ChangeEvent, useEffect, useRef, useState, useCallback } from 'react';
+import {
+  Room,
+  RoomMember,
+  MatrixClient,
+  MatrixEvent,
+  EventType,
+  RoomEvent,
+  ClientEvent,
+  SyncState,
+} from 'matrix-js-sdk';
 import styles from './Chat.module.scss';
+import { ISyncStateData } from 'matrix-js-sdk/lib/sync';
 
 interface IMessage {
   eventId: string;
@@ -11,161 +21,201 @@ interface IMessage {
 
 interface IProps {
   matrixClient: MatrixClient;
-  initialRoomId?: string;
+  initialRoomId?: string | null;
 }
 
-export const Chat = ({ matrixClient, initialRoomId }: IProps) => {
-  const [roomId, setRoomId] = useState<string | null>(initialRoomId || null);
+export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
+  const [roomId, setRoomId] = useState<string | null>(initialRoomId);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [members, setMembers] = useState<RoomMember[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const onSync = (state: string) => {
-      console.log('Matrix client sync state:', state);
-      if (state === 'PREPARED') {
+  const currentUserId = matrixClient.getUserId(); // Get the current user's ID
+
+  // Matrix sync handler
+  const handleSync = useCallback(
+    (state: SyncState, _prevState: SyncState | null, res?: ISyncStateData) => {
+      console.log('Matrix sync state:', state);
+      if (state === 'ERROR') {
+        console.error('Sync error:', res);
+      } else if (state === 'PREPARED') {
         fetchJoinedRooms();
-        if (roomId) {
-          matrixClient.joinRoom(roomId).catch(console.error);
-        }
+        if (roomId) matrixClient.joinRoom(roomId).catch(console.error);
       }
-    };
+    },
+    [matrixClient, roomId],
+  );
 
-    const onRoomMyMembership = () => {
-      fetchJoinedRooms();
-    };
-
-    const fetchJoinedRooms = () => {
-      console.log('Fetching joined rooms', matrixClient.getRooms());
-      setRooms(matrixClient.getRooms());
-    };
-
-    matrixClient.on(ClientEvent.Sync, onSync);
-    matrixClient.on(RoomEvent.MyMembership, onRoomMyMembership);
-
-    matrixClient.startClient({ initialSyncLimit: 20 });
+  // Initialize Matrix client and sync
+  useEffect(() => {
+    matrixClient.on(ClientEvent.Sync, handleSync);
+    matrixClient.startClient({ initialSyncLimit: 100 });
 
     return () => {
-      matrixClient.removeListener(ClientEvent.Sync, onSync);
-      matrixClient.removeListener(RoomEvent.MyMembership, onRoomMyMembership);
+      matrixClient.removeListener(ClientEvent.Sync, handleSync);
       matrixClient.stopClient();
     };
+  }, [matrixClient, handleSync]);
+
+  // Fetch joined rooms
+  const fetchJoinedRooms = useCallback(() => {
+    setIsLoadingRooms(true);
+    setRooms(matrixClient.getRooms());
+    setIsLoadingRooms(false);
   }, [matrixClient]);
 
+  // Update room list when membership changes
+  useEffect(() => {
+    const handleRoomMembership = fetchJoinedRooms;
+    matrixClient.on(RoomEvent.MyMembership, handleRoomMembership);
+
+    return () => {
+      matrixClient.off(RoomEvent.MyMembership, handleRoomMembership);
+    };
+  }, [matrixClient, fetchJoinedRooms]);
+
+  // Fetch room members
   useEffect(() => {
     if (!roomId) return;
 
-    setIsLoadingMembers(true);
-    const room = matrixClient.getRoom(roomId);
-
-    if (room) {
-      const members = room.getJoinedMembers();
-      setMembers(members);
+    const fetchMembers = async () => {
+      setIsLoadingMembers(true);
+      const room = matrixClient.getRoom(roomId);
+      if (room) setMembers(room.getJoinedMembers());
       setIsLoadingMembers(false);
-    } else {
-      const onRoom = (newRoom: Room) => {
-        if (newRoom.roomId === roomId) {
-          const members = newRoom.getJoinedMembers();
-          setMembers(members);
-          setIsLoadingMembers(false);
-          matrixClient.removeListener(ClientEvent.Room, onRoom);
-        }
-      };
-      matrixClient.on(ClientEvent.Room, onRoom);
-    }
+    };
+
+    fetchMembers();
   }, [matrixClient, roomId]);
 
+  // Fetch and display messages
   useEffect(() => {
     if (!roomId) return;
 
     const room = matrixClient.getRoom(roomId);
     if (!room) return;
 
-    const initialMessages = room.timeline
-      .filter((event) => event.getType() === EventType.RoomMessage)
-      .map((event) => ({
-        eventId: event.getId() || '',
-        sender: event.getSender() || '',
-        content: { body: event.getContent().body || '' },
-        timestamp: event.getTs(),
-      }));
+    const timelineSet = room.getUnfilteredTimelineSet();
+    const mapEventsToMessages = (events: MatrixEvent[]): IMessage[] =>
+      events
+        .filter((event) => event.getType() === EventType.RoomMessage)
+        .map((event) => ({
+          eventId: event.getId() || '',
+          sender: event.getSender() || '',
+          content: { body: event.getContent().body || '' },
+          timestamp: event.getTs(),
+        }));
 
-    setMessages(initialMessages);
+    const loadMessages = () => {
+      const initialMessages = mapEventsToMessages(timelineSet.getLiveTimeline().getEvents());
+      setMessages(initialMessages);
+      setIsLoadingMessages(false);
+    };
 
     const onRoomTimeline = (event: MatrixEvent) => {
       if (event.getType() === EventType.RoomMessage) {
-        const message: IMessage = {
-          eventId: event.getId() || '',
-          sender: event.getSender() || '',
-          content: event.getContent(),
-          timestamp: event.getTs(),
-        };
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            eventId: event.getId() || '',
+            sender: event.getSender() || '',
+            content: event.getContent(),
+            timestamp: event.getTs(),
+          },
+        ]);
       }
     };
 
     room.on(RoomEvent.Timeline, onRoomTimeline);
+    loadMessages();
 
     return () => {
       room.off(RoomEvent.Timeline, onRoomTimeline);
     };
   }, [matrixClient, roomId]);
 
+  // Auto-scroll to the last message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !roomId) return;
 
     try {
       await matrixClient.sendTextMessage(roomId, newMessage);
       setNewMessage('');
     } catch (error) {
-      console.error('Message sending error:', error);
+      console.error('Error sending message:', error);
     }
-  };
+  }, [matrixClient, newMessage, roomId]);
 
   const handleRoomChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setRoomId(event.target.value);
+    const selectedRoomId = event.target.value;
+    setRoomId(selectedRoomId);
     setMessages([]);
   };
+
+  const displayedMembers = members.slice(0, 3); // Limit to 5 members
+  const totalMembers = members.length;
 
   return (
     <div className={styles.chatContainer}>
       <h2 className={styles.title}>Matrix Chat</h2>
 
-      {/* Room selection */}
-      <select value={roomId || ''} onChange={handleRoomChange} className={styles.roomSelect}>
-        <option value="">Select Room</option>
-        {rooms.map((room) => (
-          <option key={room.roomId} value={room.roomId}>
-            {room.name || room.roomId}
-          </option>
-        ))}
-      </select>
+      {/* Room Selector */}
+      <div className={styles.roomSelect}>
+        {isLoadingRooms ? (
+          <div>Loading rooms...</div>
+        ) : (
+          <select value={roomId || ''} onChange={handleRoomChange} className={styles.roomSelect}>
+            <option value="">Select a room</option>
+            {rooms.map((room) => (
+              <option key={room.roomId} value={room.roomId}>
+                {room.name || room.roomId}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
-      {/* Display room members */}
+      {/* Members List */}
       {roomId && (
         <div className={styles.membersList}>
-          <h3>Members: {isLoadingMembers && <span>(Loading...)</span>}</h3>
+          <h3>Members {isLoadingMembers && <span>(Loading...)</span>}</h3>
           <ul>
-            {members.slice(0, 10).map((member) => (
-              <li key={member.userId}>{member.name || member.userId}</li>
-            ))}
+            {/* Display current user */}
+            <li key={currentUserId} className={styles.currentUser}>
+              You: {currentUserId}
+            </li>
+            {/* Display up to 20 other members */}
+            {displayedMembers.map((member) =>
+              member.userId !== currentUserId ? (
+                <li key={member.userId} className={styles.member}>
+                  {member.name || member.userId}
+                </li>
+              ) : null,
+            )}
           </ul>
+          {/* Show total number of members */}
+          {totalMembers > 20 && <p>And {totalMembers - 20} more members...</p>}
+          <p>Total members: {totalMembers}</p>
         </div>
       )}
 
-      {/* Display messages */}
+      {/* Messages */}
       <div className={styles.messages}>
-        {messages.length === 0 ? (
+        {isLoadingMessages && roomId ? (
+          <div>Loading messages...</div>
+        ) : messages.length === 0 ? (
           <div>No messages</div>
         ) : (
-          messages.slice(0, 10).map((msg) => (
+          messages.map((msg) => (
             <div key={msg.eventId} className={styles.message}>
               <span className={styles.sender}>{msg.sender}</span>: {msg.content.body}
               <span className={styles.timestamp}>{new Date(msg.timestamp).toLocaleTimeString()}</span>
@@ -175,7 +225,7 @@ export const Chat = ({ matrixClient, initialRoomId }: IProps) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area and send message */}
+      {/* Input Area */}
       {roomId && (
         <div className={styles.inputArea}>
           <input
@@ -183,9 +233,7 @@ export const Chat = ({ matrixClient, initialRoomId }: IProps) => {
             placeholder="Enter message"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') sendMessage();
-            }}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             className={styles.messageInput}
           />
           <button onClick={sendMessage} className={styles.sendButton}>

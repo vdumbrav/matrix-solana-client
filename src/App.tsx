@@ -22,11 +22,13 @@ const App = () => {
 
   return (
     <div className={styles.appContainer}>
-      <header className={styles.header}>
+      <header className={styles.content}>
         <h1>Matrix Solana Client</h1>
-        <LogoutButton />
       </header>
       <Chat matrixClient={matrixClient} />
+      <div className={styles.content}>
+        <LogoutButton />
+      </div>
     </div>
   );
 };
