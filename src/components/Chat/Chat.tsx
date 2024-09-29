@@ -1,83 +1,82 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
-import { Room, RoomMember, IEvent, EventType, RoomEvent, ClientEvent, MatrixEvent } from 'matrix-js-sdk';
-
-import matrixClient from '../../utils/matrix';
+import { Room, RoomMember, MatrixClient, MatrixEvent, EventType, RoomEvent, ClientEvent } from 'matrix-js-sdk';
 import styles from './Chat.module.scss';
 
+interface IMessage {
+  eventId: string;
+  sender: string;
+  content: { body: string };
+  timestamp: number;
+}
+
 interface IProps {
+  matrixClient: MatrixClient;
   initialRoomId?: string;
 }
 
-export const Chat = ({ initialRoomId }: IProps) => {
+export const Chat = ({ matrixClient, initialRoomId }: IProps) => {
   const [roomId, setRoomId] = useState<string | null>(initialRoomId || null);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [messages, setMessages] = useState<IEvent[]>([]);
+  const [messages, setMessages] = useState<IMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const onSync = (state: string) => {
-    if (state === 'PREPARED') {
-      fetchJoinedRooms();
-      if (roomId) {
-        matrixClient.joinRoom(roomId).catch(console.error);
-      }
-    }
-  };
-
-  const onRoomMyMembership = () => {
-    fetchJoinedRooms();
-  };
-
   useEffect(() => {
-    const initClient = async () => {
-      try {
-        await matrixClient.startClient();
-
-        matrixClient.on(ClientEvent.Sync, onSync);
-        matrixClient.on(RoomEvent.MyMembership, onRoomMyMembership);
-
-        return () => {
-          matrixClient.removeListener(ClientEvent.Sync, onSync);
-          matrixClient.removeListener(RoomEvent.MyMembership, onRoomMyMembership);
-        };
-      } catch (error) {
-        console.error('Matrix client initialization error:', error);
+    const onSync = (state: string) => {
+      console.log('Matrix client sync state:', state);
+      if (state === 'PREPARED') {
+        fetchJoinedRooms();
+        if (roomId) {
+          matrixClient.joinRoom(roomId).catch(console.error);
+        }
       }
     };
 
-    initClient();
+    const onRoomMyMembership = () => {
+      fetchJoinedRooms();
+    };
+
+    const fetchJoinedRooms = () => {
+      console.log('Fetching joined rooms', matrixClient.getRooms());
+      setRooms(matrixClient.getRooms());
+    };
+
+    matrixClient.on(ClientEvent.Sync, onSync);
+    matrixClient.on(RoomEvent.MyMembership, onRoomMyMembership);
+
+    matrixClient.startClient({ initialSyncLimit: 20 });
 
     return () => {
+      matrixClient.removeListener(ClientEvent.Sync, onSync);
+      matrixClient.removeListener(RoomEvent.MyMembership, onRoomMyMembership);
       matrixClient.stopClient();
     };
-  }, [roomId]);
-
-  const fetchJoinedRooms = () => {
-    setRooms(matrixClient.getRooms());
-  };
+  }, [matrixClient]);
 
   useEffect(() => {
-    const fetchRoomMembers = async () => {
-      if (!roomId) return;
+    if (!roomId) return;
 
-      setIsLoadingMembers(true);
-      try {
-        const room = matrixClient.getRoom(roomId);
-        if (room) {
-          const members = await room.getJoinedMembers();
+    setIsLoadingMembers(true);
+    const room = matrixClient.getRoom(roomId);
+
+    if (room) {
+      const members = room.getJoinedMembers();
+      setMembers(members);
+      setIsLoadingMembers(false);
+    } else {
+      const onRoom = (newRoom: Room) => {
+        if (newRoom.roomId === roomId) {
+          const members = newRoom.getJoinedMembers();
           setMembers(members);
+          setIsLoadingMembers(false);
+          matrixClient.removeListener(ClientEvent.Room, onRoom);
         }
-      } catch (error) {
-        console.error('Error fetching room members:', error);
-      } finally {
-        setIsLoadingMembers(false);
-      }
-    };
-
-    fetchRoomMembers();
-  }, [roomId]);
+      };
+      matrixClient.on(ClientEvent.Room, onRoom);
+    }
+  }, [matrixClient, roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -85,9 +84,26 @@ export const Chat = ({ initialRoomId }: IProps) => {
     const room = matrixClient.getRoom(roomId);
     if (!room) return;
 
+    const initialMessages = room.timeline
+      .filter((event) => event.getType() === EventType.RoomMessage)
+      .map((event) => ({
+        eventId: event.getId() || '',
+        sender: event.getSender() || '',
+        content: { body: event.getContent().body || '' },
+        timestamp: event.getTs(),
+      }));
+
+    setMessages(initialMessages);
+
     const onRoomTimeline = (event: MatrixEvent) => {
       if (event.getType() === EventType.RoomMessage) {
-        setMessages((prev) => [...prev, event.event as IEvent]);
+        const message: IMessage = {
+          eventId: event.getId() || '',
+          sender: event.getSender() || '',
+          content: event.getContent(),
+          timestamp: event.getTs(),
+        };
+        setMessages((prev) => [...prev, message]);
       }
     };
 
@@ -96,7 +112,7 @@ export const Chat = ({ initialRoomId }: IProps) => {
     return () => {
       room.off(RoomEvent.Timeline, onRoomTimeline);
     };
-  }, [roomId]);
+  }, [matrixClient, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,7 +153,7 @@ export const Chat = ({ initialRoomId }: IProps) => {
         <div className={styles.membersList}>
           <h3>Members: {isLoadingMembers && <span>(Loading...)</span>}</h3>
           <ul>
-            {members.map((member) => (
+            {members.slice(0, 10).map((member) => (
               <li key={member.userId}>{member.name || member.userId}</li>
             ))}
           </ul>
@@ -149,10 +165,10 @@ export const Chat = ({ initialRoomId }: IProps) => {
         {messages.length === 0 ? (
           <div>No messages</div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.event_id} className={styles.message}>
+          messages.slice(0, 10).map((msg) => (
+            <div key={msg.eventId} className={styles.message}>
               <span className={styles.sender}>{msg.sender}</span>: {msg.content.body}
-              <span className={styles.timestamp}>{new Date(msg.origin_server_ts).toLocaleTimeString()}</span>
+              <span className={styles.timestamp}>{new Date(msg.timestamp).toLocaleTimeString()}</span>
             </div>
           ))
         )}

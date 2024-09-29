@@ -1,4 +1,5 @@
-import { createContext, useState, useEffect, ReactNode, SetStateAction, Dispatch } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
 import magic from '../utils/magic';
 
 interface AuthContextProps {
@@ -22,8 +23,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkLoggedIn = async () => {
       const isLoggedIn = await magic.user.isLoggedIn();
       if (isLoggedIn) {
-        const userInfo = await magic.user.getMetadata();
+        const userInfo = await magic.user.getInfo();
         setUser(userInfo);
+        console.log('Magic checkLoggedIn success:', userInfo);
       }
     };
     checkLoggedIn();
@@ -32,8 +34,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string) => {
     try {
       await magic.auth.loginWithMagicLink({ email });
-      const userInfo = await magic.user.getMetadata();
+      const userInfo = await magic.user.getInfo();
       setUser(userInfo);
+      console.log('Magic login success:', userInfo);
     } catch (error) {
       console.error('login error:', error);
     }
@@ -43,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await magic.user.logout();
       setUser(null);
+      console.log('User logged out successfully.');
     } catch (error) {
       console.error('logout error:', error);
     }
