@@ -32,7 +32,7 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = matrixClient.getUserId(); // Get the current user's ID
@@ -45,13 +45,12 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
         console.error('Sync error:', res);
       } else if (state === 'PREPARED') {
         fetchJoinedRooms();
-        if (roomId) matrixClient.joinRoom(roomId).catch(console.error);
       }
     },
-    [matrixClient, roomId],
+    [matrixClient],
   );
 
-  // Initialize Matrix client and sync
+  // Initialize Matrix client and start synchronization
   useEffect(() => {
     matrixClient.on(ClientEvent.Sync, handleSync);
     matrixClient.startClient({ initialSyncLimit: 100 });
@@ -65,7 +64,8 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
   // Fetch joined rooms
   const fetchJoinedRooms = useCallback(() => {
     setIsLoadingRooms(true);
-    setRooms(matrixClient.getRooms());
+    const currentRooms = matrixClient.getRooms();
+    setRooms(currentRooms);
     setIsLoadingRooms(false);
   }, [matrixClient]);
 
@@ -100,7 +100,9 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
     const room = matrixClient.getRoom(roomId);
     if (!room) return;
 
+    setIsLoadingMessages(true);
     const timelineSet = room.getUnfilteredTimelineSet();
+
     const mapEventsToMessages = (events: MatrixEvent[]): IMessage[] =>
       events
         .filter((event) => event.getType() === EventType.RoomMessage)
@@ -111,12 +113,14 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
           timestamp: event.getTs(),
         }));
 
+    // Load initial messages
     const loadMessages = () => {
       const initialMessages = mapEventsToMessages(timelineSet.getLiveTimeline().getEvents());
       setMessages(initialMessages);
       setIsLoadingMessages(false);
     };
 
+    // Handler for new messages
     const onRoomTimeline = (event: MatrixEvent) => {
       if (event.getType() === EventType.RoomMessage) {
         setMessages((prev) => [
@@ -128,6 +132,7 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
             timestamp: event.getTs(),
           },
         ]);
+        setIsLoadingMessages(false);
       }
     };
 
@@ -152,16 +157,20 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
+      // Here you can add a notification for the user
     }
   }, [matrixClient, newMessage, roomId]);
 
-  const handleRoomChange = (event: ChangeEvent<HTMLSelectElement>) => {
+  // Handle room selection change
+  const handleRoomChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     const selectedRoomId = event.target.value;
     setRoomId(selectedRoomId);
     setMessages([]);
-  };
+    // No need to leave or join rooms when switching
+  }, []);
 
-  const displayedMembers = members.slice(0, 3); // Limit to 5 members
+  // Limit the number of displayed members
+  const displayedMembers = members.slice(0, 3); // Limit to 3 members
   const totalMembers = members.length;
 
   return (
@@ -193,7 +202,7 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
             <li key={currentUserId} className={styles.currentUser}>
               You: {currentUserId}
             </li>
-            {/* Display up to 20 other members */}
+            {/* Display up to 3 other members */}
             {displayedMembers.map((member) =>
               member.userId !== currentUserId ? (
                 <li key={member.userId} className={styles.member}>
@@ -203,7 +212,7 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
             )}
           </ul>
           {/* Show total number of members */}
-          {totalMembers > 20 && <p>And {totalMembers - 20} more members...</p>}
+          {totalMembers > 3 && <p>And {totalMembers - 3} more members...</p>}
           <p>Total members: {totalMembers}</p>
         </div>
       )}
