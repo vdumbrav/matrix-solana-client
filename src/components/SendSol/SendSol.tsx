@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
 import styles from './SendSol.module.scss';
 import { toast } from 'react-toastify';
