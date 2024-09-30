@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import useMatrixClient from './utils/matrix';
 import styles from './App.module.scss';
-import { WalletSetup } from './WalletSetup';
+import { WalletSetup } from './components/WalletSetup';
 
 export const App = () => {
   const { user } = useContext(AuthContext);
@@ -30,14 +30,12 @@ export const App = () => {
 
   return (
     <div>
-      <WalletSetup />
       <header className={styles.content}>
         <h1>Matrix Solana Client</h1>
       </header>
       <div className={styles.content}>
         <Chat matrixClient={matrixClient} onRoomIdChange={handleRoomIdChange} />
-        <Wallet />
-        <SendSol matrixClient={matrixClient} roomId={roomId} />
+        <WalletSetup matrixClient={matrixClient} roomId={roomId} />
         <LogoutButton />
       </div>
     </div>

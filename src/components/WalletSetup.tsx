@@ -4,9 +4,17 @@ import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { WalletModalProvider, WalletMultiButton, WalletDisconnectButton } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
-import '@solana/wallet-adapter-react-ui/styles.css';
+import { Wallet } from './Wallet/Wallet';
+import { SendSol } from './SendSol/SendSol';
+import { MatrixClient } from 'matrix-js-sdk';
 
-export const WalletSetup = () => {
+
+interface IProps {
+  matrixClient: MatrixClient;
+  roomId: string | null;
+}
+
+export const WalletSetup = ({ matrixClient, roomId }: IProps) => {
   const network = WalletAdapterNetwork.Devnet;
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
@@ -24,6 +32,8 @@ export const WalletSetup = () => {
         <WalletModalProvider>
           <WalletMultiButton />
           <WalletDisconnectButton />
+          <Wallet />
+          <SendSol matrixClient={matrixClient} roomId={roomId} />
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
