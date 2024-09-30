@@ -24,8 +24,7 @@ export const SendSol = ({ matrixClient, roomId }: SendSolProps) => {
 
     try {
       setStatus('Sending...');
-      const solana = magic.rpcProvider;
-      const accounts = await solana.request({ method: 'getAccounts' });
+      const accounts = await magic.rpcProvider.request({ method: 'solana_requestAccounts' }); // Get accounts
       if (accounts.length === 0) throw new Error('No Solana account found.');
 
       const senderPublicKey = new PublicKey(accounts[0]);
@@ -40,13 +39,11 @@ export const SendSol = ({ matrixClient, roomId }: SendSolProps) => {
         }),
       );
 
-      const signedTransaction = await solana.signTransaction(transaction); // Sign the transaction
-      const signature = await connection.sendRawTransaction(signedTransaction.serialize()); // Send the transaction
-
-      await connection.confirmTransaction(signature, 'processed');
+      const { rawTransaction } = await magic.solana.signTransaction(transaction); // Sign the transaction
+      const signature = await connection.sendRawTransaction(rawTransaction); // Send the serialized transaction
+      await connection.confirmTransaction(signature, 'processed'); // Confirm the transaction
       setStatus(`Transaction successful! Hash: ${signature}`);
 
-      // Send notification to Matrix chat
       if (roomId) {
         await matrixClient.sendTextMessage(roomId, `Transaction successful! Hash: ${signature}`);
       }

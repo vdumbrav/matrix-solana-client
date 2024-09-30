@@ -13,12 +13,10 @@ export const Wallet = () => {
   useEffect(() => {
     const getWalletInfo = async () => {
       try {
-        const solana = magic.rpcProvider; // Access the RPC provider from magic
-        const accounts = await solana.request({ method: 'getAccounts' }); // Fetch the user's accounts
-
+        const accounts = await magic.rpcProvider.request({ method: 'solana_requestAccounts' }); // Get accounts
         if (accounts.length > 0) {
-          const pubKey = new PublicKey(accounts[0]);
-          setPublicKey(pubKey.toBase58());
+          const pubKey = new PublicKey(accounts[0]); // Convert to Solana PublicKey
+          setPublicKey(pubKey.toBase58()); // Set the public key
 
           const balanceLamports = await connection.getBalance(pubKey);
           const balanceSol = balanceLamports / 1e9; // Convert lamports to SOL

@@ -4,7 +4,7 @@ import { SolanaExtension } from '@magic-ext/solana';
 const magic = new Magic(import.meta.env.VITE_MAGIC_PUBLISHABLE_KEY, {
   extensions: [
     new SolanaExtension({
-      rpcUrl: import.meta.env.VITE_SOLANA_RPC_URL,
+      rpcUrl: import.meta.env.VITE_SOLANA_RPC_URL, // Use the Devnet or Mainnet URL
     }),
   ],
 });
