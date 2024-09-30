@@ -1,0 +1,18 @@
+/* src/components/Wallet.module.scss */
+.walletContainer {
+  border: 1px solid #ccc;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+
+  h3 {
+    margin-bottom: 12px;
+    color: #333;
+  }
+
+  p {
+    margin: 8px 0;
+    color: #555;
+  }
+}

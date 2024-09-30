@@ -1,10 +1,10 @@
 import { Magic } from 'magic-sdk';
 import { SolanaExtension } from '@magic-ext/solana';
 
-const magic = new Magic('pk_live_6DCA31211A986C43', {
+const magic = new Magic(import.meta.env.VITE_MAGIC_PUBLISHABLE_KEY, {
   extensions: [
     new SolanaExtension({
-      rpcUrl: 'https://api.devnet.solana.com',
+      rpcUrl: import.meta.env.VITE_SOLANA_RPC_URL,
     }),
   ],
 });
