@@ -14,8 +14,10 @@ export const Wallet = () => {
     const getWalletInfo = async () => {
       try {
         const accounts = await magic.rpcProvider.request({ method: 'solana_requestAccounts' }); // Get accounts
+        console.log('Accounts:', accounts);
         if (accounts.length > 0) {
           const pubKey = new PublicKey(accounts[0]); // Convert to Solana PublicKey
+          console.log('Public key:', pubKey.toBase58());
           setPublicKey(pubKey.toBase58()); // Set the public key
 
           const balanceLamports = await connection.getBalance(pubKey);

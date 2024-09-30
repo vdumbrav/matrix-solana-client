@@ -22,9 +22,10 @@ interface IMessage {
 interface IProps {
   matrixClient: MatrixClient;
   initialRoomId?: string | null;
+  onRoomIdChange: (roomId: string | null) => void; // Callback for room change
 }
 
-export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
+export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IProps) => {
   const [roomId, setRoomId] = useState<string | null>(initialRoomId);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<IMessage[]>([]);
@@ -162,12 +163,15 @@ export const Chat = ({ matrixClient, initialRoomId = null }: IProps) => {
   }, [matrixClient, newMessage, roomId]);
 
   // Handle room selection change
-  const handleRoomChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
-    const selectedRoomId = event.target.value;
-    setRoomId(selectedRoomId);
-    setMessages([]);
-    // No need to leave or join rooms when switching
-  }, []);
+  const handleRoomChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const selectedRoomId = event.target.value;
+      setRoomId(selectedRoomId);
+      setMessages([]);
+      onRoomIdChange(selectedRoomId); // Send the roomId to the parent component
+    },
+    [onRoomIdChange],
+  );
 
   // Limit the number of displayed members
   const displayedMembers = members.slice(0, 3); // Limit to 3 members

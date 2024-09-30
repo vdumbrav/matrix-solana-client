@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { PublicKey, Transaction, SystemProgram, Connection } from '@solana/web3.js';
-import styles from './SendSol.module.scss';
-import magic from '../../utils/magic';
+import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { MatrixClient } from 'matrix-js-sdk';
+import styles from './SendSol.module.scss';
+import { toast } from 'react-toastify';
 
 interface SendSolProps {
   matrixClient: MatrixClient;
   roomId: string | null;
 }
 
-const connection = new Connection(import.meta.env.VITE_SOLANA_RPC_URL);
-
 export const SendSol = ({ matrixClient, roomId }: SendSolProps) => {
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [status, setStatus] = useState<string>('');
@@ -22,34 +23,46 @@ export const SendSol = ({ matrixClient, roomId }: SendSolProps) => {
       return;
     }
 
+    if (!publicKey) {
+      setStatus('Please connect your wallet.');
+      return;
+    }
+
     try {
       setStatus('Sending...');
-      const accounts = await magic.rpcProvider.request({ method: 'solana_requestAccounts' }); // Get accounts
-      if (accounts.length === 0) throw new Error('No Solana account found.');
 
-      const senderPublicKey = new PublicKey(accounts[0]);
       const recipientPublicKey = new PublicKey(recipient);
-      const amountInLamports = parseFloat(amount) * 1e9; // Convert SOL to lamports
+      const amountInLamports = parseFloat(amount) * 1e9;
 
       const transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: senderPublicKey,
+          fromPubkey: publicKey,
           toPubkey: recipientPublicKey,
           lamports: amountInLamports,
         }),
       );
 
-      const { rawTransaction } = await magic.solana.signTransaction(transaction); // Sign the transaction
-      const signature = await connection.sendRawTransaction(rawTransaction); // Send the serialized transaction
-      await connection.confirmTransaction(signature, 'processed'); // Confirm the transaction
-      setStatus(`Transaction successful! Hash: ${signature}`);
+      const latestBlockhash = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = latestBlockhash.blockhash;
+      transaction.feePayer = publicKey;
+
+      const signature = await sendTransaction(transaction, connection);
+      await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      });
+
+      setStatus(`Transaction successful! Signature: ${signature}`);
+      toast.success(`Transaction successful! Signature: ${signature}`);
 
       if (roomId) {
-        await matrixClient.sendTextMessage(roomId, `Transaction successful! Hash: ${signature}`);
+        await matrixClient.sendTextMessage(roomId, `Transaction successful! Signature: ${signature}`);
       }
     } catch (error) {
       console.error('Error sending SOL:', error);
       setStatus('Transaction failed.');
+      toast.error('Transaction failed.');
     }
   };
 
@@ -70,7 +83,7 @@ export const SendSol = ({ matrixClient, roomId }: SendSolProps) => {
         onChange={(e) => setAmount(e.target.value)}
         className={styles.input}
       />
-      <button onClick={sendSol} className={styles.sendButton}>
+      <button onClick={sendSol} className={styles.sendButton} disabled={!publicKey}>
         Send
       </button>
       {status && <p className={styles.status}>{status}</p>}
