@@ -59,6 +59,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       setStatus('Preparing transaction...');
       let transaction = new Transaction();
 
+      // SOL Transfer logic
       if (tokenType === 'SOL') {
         const recipientPublicKey = new PublicKey(recipient);
         const amountInLamports = parseFloat(amount) * 1e9;
@@ -71,6 +72,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
           }),
         );
       } else {
+        // SPL Token transfer logic
         if (!mintAddress) {
           setStatus('Please enter SPL token mint address.');
           return;
@@ -83,17 +85,17 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         // Get or create ATA for sender
         const senderATA = await getOrCreateAssociatedTokenAccount(
           connection,
-          publicKey as unknown as Signer, // The publicKey is used as payer (wallet signs the transaction)
+          publicKey as unknown as Signer, // Wallet signs the transaction
           mintPublicKey, // Mint address of the token
-          publicKey, // Owner of the ATA (in this case, the sender)
+          publicKey, // Owner of the ATA (sender)
         );
 
         // Get or create ATA for recipient
         const recipientATA = await getOrCreateAssociatedTokenAccount(
           connection,
-          publicKey as unknown as Signer, // The publicKey is used as payer
+          publicKey as unknown as Signer, // Wallet signs the transaction
           mintPublicKey, // Mint address of the token
-          recipientPublicKey, // Owner of the ATA (in this case, the recipient)
+          recipientPublicKey, // Owner of the ATA (recipient)
         );
 
         const tokenInfo = await connection.getParsedAccountInfo(mintPublicKey);
@@ -113,7 +115,8 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         transaction.add(transferInstruction);
       }
 
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      // Fetch a fresh blockhash before sending the transaction
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
@@ -124,20 +127,23 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
           blockhash,
           lastValidBlockHeight,
         },
-        'confirmed',
+        'finalized',
       );
 
       setStatus(`Transaction successful! Signature: ${signature}`);
       toast.success(`Transaction successful! Signature: ${signature}`);
 
       if (roomId) {
-        if (tokenType === 'SOL') {
-          await matrixClient.sendTextMessage(roomId, `SOL Transaction successful! Signature: ${signature}`);
-        } else {
-          await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
+        if (roomId) {
+          if (tokenType === 'SOL') {
+            await matrixClient.sendTextMessage(roomId, `SOL Transaction successful! Signature: ${signature}`);
+          } else {
+            await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
+          }
         }
       }
 
+      // Reset form fields
       setRecipient('');
       setAmount('');
       setMintAddress('');
@@ -192,6 +198,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       <button onClick={sendToken} className={styles.sendButton} disabled={!publicKey}>
         Send
       </button>
+
       {status && <p className={styles.status}>{status}</p>}
     </div>
   );

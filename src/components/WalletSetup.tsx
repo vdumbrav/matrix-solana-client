@@ -6,7 +6,7 @@ import { WalletModalProvider, WalletMultiButton, WalletDisconnectButton } from '
 import { clusterApiUrl } from '@solana/web3.js';
 import { Wallet } from './Wallet/Wallet';
 import { MatrixClient } from 'matrix-js-sdk';
-import { SendToken } from './SendSol/SendToken';
+import { SendToken } from './SendToken/SendToken';
 import styles from './Wallet/Wallet.module.scss';
 
 interface IProps {
