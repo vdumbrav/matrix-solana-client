@@ -81,7 +81,6 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         const amountInDecimals = parseFloat(amount);
 
         // Get or create ATA for sender
-        // Get or create ATA for sender
         const senderATA = await getOrCreateAssociatedTokenAccount(
           connection,
           publicKey as unknown as Signer, // The publicKey is used as payer (wallet signs the transaction)

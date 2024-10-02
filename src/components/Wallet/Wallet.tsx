@@ -27,8 +27,12 @@ export const Wallet = () => {
       <h3>Solana Wallet</h3>
       {publicKey ? (
         <div className={styles.data}>
-          <p><strong>Public Key:</strong> {publicKey.toBase58()}</p>
-          <p><strong>Balance:</strong> {balance} SOL</p>
+          <p>
+            <strong>Public Key:</strong> {publicKey.toBase58()}
+          </p>
+          <p>
+            <strong>Balance:</strong> {balance} SOL
+          </p>
         </div>
       ) : (
         <p>No wallet connected.</p>

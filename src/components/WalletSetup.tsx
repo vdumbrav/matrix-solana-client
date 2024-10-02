@@ -7,7 +7,7 @@ import { clusterApiUrl } from '@solana/web3.js';
 import { Wallet } from './Wallet/Wallet';
 import { MatrixClient } from 'matrix-js-sdk';
 import { SendToken } from './SendSol/SendToken';
-import styles from './Wallet.module.scss';
+import styles from './Wallet/Wallet.module.scss';
 
 interface IProps {
   matrixClient: MatrixClient;
