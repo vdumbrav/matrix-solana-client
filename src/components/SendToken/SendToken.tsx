@@ -1,10 +1,14 @@
-import { PublicKey, Transaction, SystemProgram, Signer } from '@solana/web3.js';
+import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
 import styles from './SendToken.module.scss';
 import { toast } from 'react-toastify';
-import { getOrCreateAssociatedTokenAccount, createTransferInstruction } from '@solana/spl-token';
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  createTransferCheckedInstruction,
+} from '@solana/spl-token';
 
 interface SendTokenProps {
   matrixClient: MatrixClient;
@@ -59,10 +63,10 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       setStatus('Preparing transaction...');
       let transaction = new Transaction();
 
-      // SOL Transfer logic
       if (tokenType === 'SOL') {
+        // SOL Transfer logic
         const recipientPublicKey = new PublicKey(recipient);
-        const amountInLamports = parseFloat(amount) * 1e9;
+        const amountInLamports = parseFloat(amount) * 1e9; // 1 SOL = 1e9 lamports
 
         transaction.add(
           SystemProgram.transfer({
@@ -73,73 +77,87 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         );
       } else {
         // SPL Token transfer logic
-        if (!mintAddress) {
-          setStatus('Please enter SPL token mint address.');
-          return;
-        }
-
         const mintPublicKey = new PublicKey(mintAddress);
         const recipientPublicKey = new PublicKey(recipient);
         const amountInDecimals = parseFloat(amount);
 
-        // Get or create ATA for sender
-        const senderATA = await getOrCreateAssociatedTokenAccount(
-          connection,
-          publicKey as unknown as Signer, // Wallet signs the transaction
-          mintPublicKey, // Mint address of the token
-          publicKey, // Owner of the ATA (sender)
-        );
-
-        // Get or create ATA for recipient
-        const recipientATA = await getOrCreateAssociatedTokenAccount(
-          connection,
-          publicKey as unknown as Signer, // Wallet signs the transaction
-          mintPublicKey, // Mint address of the token
-          recipientPublicKey, // Owner of the ATA (recipient)
-        );
-
-        const tokenInfo = await connection.getParsedAccountInfo(mintPublicKey);
-        if (!tokenInfo.value) {
+        // Fetch the mint account to get decimals
+        const mintAccountInfo = await connection.getParsedAccountInfo(mintPublicKey);
+        if (!mintAccountInfo.value) {
           setStatus('Invalid SPL token mint address.');
           return;
         }
-        const decimals = (tokenInfo.value.data as any).parsed.info.decimals;
 
-        const transferInstruction = createTransferInstruction(
-          senderATA.address,
-          recipientATA.address,
-          publicKey,
-          amountInDecimals * Math.pow(10, decimals),
+        // @ts-ignore
+        const decimals = mintAccountInfo.value.data.parsed.info.decimals;
+
+        // Get associated token addresses
+        const senderATA = await getAssociatedTokenAddress(mintPublicKey, publicKey);
+        const recipientATA = await getAssociatedTokenAddress(mintPublicKey, recipientPublicKey);
+
+        const instructions: TransactionInstruction[] = [];
+
+        // Check if sender's ATA exists
+        const senderAccountInfo = await connection.getAccountInfo(senderATA);
+        if (!senderAccountInfo) {
+          // Sender's ATA does not exist; alert user
+          setStatus('Sender does not have an associated token account for this mint.');
+          return;
+        }
+
+        // Check if recipient's ATA exists
+        const recipientAccountInfo = await connection.getAccountInfo(recipientATA);
+        if (!recipientAccountInfo) {
+          // Create the recipient's ATA
+          const createRecipientATAInstruction = createAssociatedTokenAccountInstruction(
+            publicKey, // Payer
+            recipientATA, // Associated token account address
+            recipientPublicKey, // Owner of the new account
+            mintPublicKey, // Mint
+          );
+          instructions.push(createRecipientATAInstruction);
+        }
+
+        // Create the transfer instruction
+        const transferInstruction = createTransferCheckedInstruction(
+          senderATA, // Source ATA
+          mintPublicKey, // Mint
+          recipientATA, // Destination ATA
+          publicKey, // Owner of the source ATA
+          amountInDecimals * Math.pow(10, decimals), // Amount in smallest units
+          decimals, // Decimals
         );
 
-        transaction.add(transferInstruction);
+        instructions.push(transferInstruction);
+
+        // Add all instructions to the transaction
+        transaction.add(...instructions);
       }
 
-      // Fetch a fresh blockhash before sending the transaction
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = publicKey;
-
+      // Send the transaction using the wallet adapter
       const signature = await sendTransaction(transaction, connection);
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash,
-          lastValidBlockHeight,
-        },
-        'finalized',
-      );
+
+      // Optionally, confirm the transaction
+      const confirmation = await connection.confirmTransaction(signature, 'finalized');
+
+      if (confirmation.value.err) {
+        throw new Error('Transaction failed.');
+      }
 
       setStatus(`Transaction successful! Signature: ${signature}`);
       toast.success(`Transaction successful! Signature: ${signature}`);
 
       if (roomId) {
-        if (roomId) {
-          if (tokenType === 'SOL') {
-            await matrixClient.sendTextMessage(roomId, `SOL Transaction successful! Signature: ${signature}`);
-          } else {
-            await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
-          }
+        if (tokenType === 'SOL') {
+          await matrixClient.sendTextMessage(
+            roomId,
+            `SOL Transaction successful! Signature: ${signature}`,
+          );
+        } else {
+          await matrixClient.sendTextMessage(
+            roomId,
+            `SPL Token Transaction successful! Signature: ${signature}`,
+          );
         }
       }
 
@@ -147,10 +165,10 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       setRecipient('');
       setAmount('');
       setMintAddress('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending token:', error);
       setStatus('Transaction failed.');
-      toast.error('Transaction failed.');
+      toast.error(`Transaction failed: ${error.message}`);
     }
   };
 
@@ -160,11 +178,21 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
 
       <div className={styles.tokenTypeSelector}>
         <label>
-          <input type="radio" value="SOL" checked={tokenType === 'SOL'} onChange={() => setTokenType('SOL')} />
+          <input
+            type="radio"
+            value="SOL"
+            checked={tokenType === 'SOL'}
+            onChange={() => setTokenType('SOL')}
+          />
           SOL
         </label>
         <label>
-          <input type="radio" value="SPL" checked={tokenType === 'SPL'} onChange={() => setTokenType('SPL')} />
+          <input
+            type="radio"
+            value="SPL"
+            checked={tokenType === 'SPL'}
+            onChange={() => setTokenType('SPL')}
+          />
           SPL Token
         </label>
       </div>
