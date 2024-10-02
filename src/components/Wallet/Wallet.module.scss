@@ -18,3 +18,10 @@
     word-break: break-all;
   }
 }
+
+.wallets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px auto 0;
+}

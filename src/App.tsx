@@ -1,11 +1,12 @@
 import { useContext, useState } from 'react';
 import { AuthContext } from './contexts/AuthContext';
-import { Login, Chat, LogoutButton, SendSol, Wallet } from './components';
+import { Login, Chat, LogoutButton } from './components';
 import 'react-toastify/dist/ReactToastify.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import useMatrixClient from './utils/matrix';
 import styles from './App.module.scss';
 import { WalletSetup } from './components/WalletSetup';
+import { ToastContainer } from 'react-toastify';
 
 export const App = () => {
   const { user } = useContext(AuthContext);
@@ -29,7 +30,8 @@ export const App = () => {
   }
 
   return (
-    <div>
+    <div className={styles.appContainer}>
+      <ToastContainer />
       <header className={styles.content}>
         <h1>Matrix Solana Client</h1>
       </header>
