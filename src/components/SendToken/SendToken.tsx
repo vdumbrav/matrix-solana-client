@@ -88,7 +88,21 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
           return;
         }
 
-        // @ts-ignore
+        // Debugging: Log the fetched mint account data
+        console.log('Mint Account Info:', mintAccountInfo.value.data);
+
+        // Check if 'parsed.info.decimals' exists
+        if (
+          !mintAccountInfo.value.data ||
+          !('parsed' in mintAccountInfo.value.data) ||
+          !('info' in mintAccountInfo.value.data.parsed) ||
+          !('decimals' in mintAccountInfo.value.data.parsed.info)
+        ) {
+          setStatus('Unable to retrieve token decimals.');
+          console.error('Mint account data structure:', mintAccountInfo.value.data);
+          return;
+        }
+
         const decimals = mintAccountInfo.value.data.parsed.info.decimals;
 
         // Get associated token addresses
@@ -102,6 +116,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         if (!senderAccountInfo) {
           // Sender's ATA does not exist; alert user
           setStatus('Sender does not have an associated token account for this mint.');
+          console.error('Sender ATA does not exist:', senderATA.toBase58());
           return;
         }
 
@@ -149,15 +164,9 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
 
       if (roomId) {
         if (tokenType === 'SOL') {
-          await matrixClient.sendTextMessage(
-            roomId,
-            `SOL Transaction successful! Signature: ${signature}`,
-          );
+          await matrixClient.sendTextMessage(roomId, `SOL Transaction successful! Signature: ${signature}`);
         } else {
-          await matrixClient.sendTextMessage(
-            roomId,
-            `SPL Token Transaction successful! Signature: ${signature}`,
-          );
+          await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
         }
       }
 
@@ -178,21 +187,11 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
 
       <div className={styles.tokenTypeSelector}>
         <label>
-          <input
-            type="radio"
-            value="SOL"
-            checked={tokenType === 'SOL'}
-            onChange={() => setTokenType('SOL')}
-          />
+          <input type="radio" value="SOL" checked={tokenType === 'SOL'} onChange={() => setTokenType('SOL')} />
           SOL
         </label>
         <label>
-          <input
-            type="radio"
-            value="SPL"
-            checked={tokenType === 'SPL'}
-            onChange={() => setTokenType('SPL')}
-          />
+          <input type="radio" value="SPL" checked={tokenType === 'SPL'} onChange={() => setTokenType('SPL')} />
           SPL Token
         </label>
       </div>
