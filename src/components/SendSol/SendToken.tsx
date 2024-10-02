@@ -1,4 +1,4 @@
-import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { PublicKey, Transaction, SystemProgram, Signer } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
@@ -16,8 +16,8 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
   const { publicKey, sendTransaction } = useWallet();
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [mintAddress, setMintAddress] = useState<string>(''); // For SPL tokens
-  const [tokenType, setTokenType] = useState<'SOL' | 'SPL'>('SOL'); // Token type selection
+  const [mintAddress, setMintAddress] = useState<string>('');
+  const [tokenType, setTokenType] = useState<'SOL' | 'SPL'>('SOL');
   const [status, setStatus] = useState<string>('');
 
   const isValidPublicKey = (key: string): boolean => {
@@ -45,21 +45,25 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       return;
     }
 
+    if (tokenType === 'SPL' && !isValidPublicKey(mintAddress)) {
+      setStatus('Invalid SPL token mint address.');
+      return;
+    }
+
     if (!publicKey) {
       setStatus('Please connect your wallet.');
       return;
     }
 
     try {
-      setStatus('Sending...');
-      let transaction: Transaction;
+      setStatus('Preparing transaction...');
+      let transaction = new Transaction();
 
       if (tokenType === 'SOL') {
-        // SOL Transfer
         const recipientPublicKey = new PublicKey(recipient);
         const amountInLamports = parseFloat(amount) * 1e9;
 
-        transaction = new Transaction().add(
+        transaction.add(
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: recipientPublicKey,
@@ -67,7 +71,6 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
           }),
         );
       } else {
-        // SPL Token Transfer
         if (!mintAddress) {
           setStatus('Please enter SPL token mint address.');
           return;
@@ -77,47 +80,53 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
         const recipientPublicKey = new PublicKey(recipient);
         const amountInDecimals = parseFloat(amount);
 
-        // Get or create Associated Token Account (ATA) for the sender
-        const senderATA = await getOrCreateAssociatedTokenAccount(connection, publicKey, mintPublicKey, publicKey);
-
-        // Get or create ATA for the recipient
-        const recipientATA = await getOrCreateAssociatedTokenAccount(
+        // Get or create ATA for sender
+        // Get or create ATA for sender
+        const senderATA = await getOrCreateAssociatedTokenAccount(
           connection,
-          publicKey,
-          mintPublicKey,
-          recipientPublicKey,
+          publicKey as unknown as Signer, // The publicKey is used as payer (wallet signs the transaction)
+          mintPublicKey, // Mint address of the token
+          publicKey, // Owner of the ATA (in this case, the sender)
         );
 
-        // Fetch token information for decimals
+        // Get or create ATA for recipient
+        const recipientATA = await getOrCreateAssociatedTokenAccount(
+          connection,
+          publicKey as unknown as Signer, // The publicKey is used as payer
+          mintPublicKey, // Mint address of the token
+          recipientPublicKey, // Owner of the ATA (in this case, the recipient)
+        );
+
         const tokenInfo = await connection.getParsedAccountInfo(mintPublicKey);
         if (!tokenInfo.value) {
-          setStatus('Invalid token mint address.');
+          setStatus('Invalid SPL token mint address.');
           return;
         }
         const decimals = (tokenInfo.value.data as any).parsed.info.decimals;
 
-        // Create instruction to transfer SPL tokens
-        transaction = new Transaction().add(
-          createTransferInstruction(
-            senderATA.address,
-            recipientATA.address,
-            publicKey,
-            amountInDecimals * Math.pow(10, decimals),
-          ),
+        const transferInstruction = createTransferInstruction(
+          senderATA.address,
+          recipientATA.address,
+          publicKey,
+          amountInDecimals * Math.pow(10, decimals),
         );
+
+        transaction.add(transferInstruction);
       }
 
-      // Send the transaction
-      const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-      transaction.recentBlockhash = latestBlockhash.blockhash;
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
       const signature = await sendTransaction(transaction, connection);
-      await connection.confirmTransaction({
-        signature,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-      });
+      await connection.confirmTransaction(
+        {
+          signature,
+          blockhash,
+          lastValidBlockHeight,
+        },
+        'confirmed',
+      );
 
       setStatus(`Transaction successful! Signature: ${signature}`);
       toast.success(`Transaction successful! Signature: ${signature}`);
@@ -129,6 +138,10 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
           await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
         }
       }
+
+      setRecipient('');
+      setAmount('');
+      setMintAddress('');
     } catch (error) {
       console.error('Error sending token:', error);
       setStatus('Transaction failed.');
