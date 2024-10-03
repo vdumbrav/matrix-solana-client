@@ -11,6 +11,7 @@ interface AuthContextProps {
   loginWithEmailOTP: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: Dispatch<SetStateAction<any>>;
+  setAccessToken: Dispatch<SetStateAction<string | null>>;
 }
 
 export const AuthContext = createContext<AuthContextProps>({
@@ -21,6 +22,7 @@ export const AuthContext = createContext<AuthContextProps>({
   loginWithEmailOTP: async () => {},
   logout: async () => {},
   setUser: () => {},
+  setAccessToken: () => {},
 });
 
 export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -91,7 +93,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, loginWithMagicLink, loginWithGoogle, loginWithEmailOTP, logout, setUser }}
+      value={{
+        user,
+        accessToken,
+        loginWithMagicLink,
+        loginWithGoogle,
+        loginWithEmailOTP,
+        logout,
+        setUser,
+        setAccessToken,
+      }}
     >
       {children}
     </AuthContext.Provider>
