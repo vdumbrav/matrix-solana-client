@@ -48,6 +48,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setAccessToken(token);
       localStorage.setItem('user', JSON.stringify(userInfo));
       localStorage.setItem('accessToken', token);
+      navigate('/');
     } catch (error) {
       console.error('Magic Link login error:', error);
     }
@@ -62,6 +63,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setAccessToken(token);
       localStorage.setItem('user', JSON.stringify(userInfo));
       localStorage.setItem('accessToken', token);
+      navigate('/');
     } catch (error) {
       console.error('Email OTP login error:', error);
     }

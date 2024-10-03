@@ -1,27 +1,40 @@
 .loginContainer {
-  width: 300px;
-  margin: 100px auto;
+  width: 90%;
+  max-width: 400px;
+  margin: 50px auto;
   padding: 35px;
   text-align: center;
   border: 1px solid #ccc;
   border-radius: 8px;
   background-color: #fafafa;
+
+  @media (max-width: 500px) {
+    margin: 20px auto;
+    padding: 20px;
+  }
 }
 
 .form {
   display: flex;
   flex-direction: column;
+  margin-bottom: 20px;
 }
 
 .input {
+  width: 100%;
   max-width: 100%;
   margin-bottom: 10px;
   padding: 10px;
-  background-color: #fafafa;
   transition: border-color 0.3s;
+  color: #111;
   border: 1px solid #ddd;
   border-radius: 4px;
-  color: #111;
+  background-color: #fafafa;
+
+  &:focus {
+    border-color: #5c6bc0;
+    outline: none;
+  }
 }
 
 .errorInput {
@@ -36,6 +49,7 @@
 
 .button {
   width: 100%;
+  margin-bottom: 10px;
   padding: 10px;
   cursor: pointer;
   transition: background-color 0.3s;
@@ -51,5 +65,54 @@
   &:disabled {
     cursor: not-allowed;
     background-color: #9fa8da;
+  }
+}
+
+.divider {
+  position: relative;
+  margin: 20px 0;
+  text-align: center;
+
+  &::before,
+  &::after {
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    content: '';
+    background-color: #ccc;
+  }
+
+  &::before {
+    left: 0;
+  }
+
+  &::after {
+    right: 0;
+  }
+
+  span {
+    position: relative;
+    z-index: 1;
+    padding: 0 10px;
+    background-color: #fafafa;
+  }
+}
+
+.googleButton {
+  width: 100%;
+  padding: 10px 20px;
+
+  cursor: pointer;
+
+  color: white;
+  border: none;
+  border-radius: 4px;
+  background-color: #4285f4;
+
+  font-size: 16px;
+
+  &:hover {
+    background-color: #357ae8;
   }
 }
