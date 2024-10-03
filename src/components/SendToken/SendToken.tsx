@@ -61,7 +61,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
 
     try {
       setStatus('Preparing transaction...');
-      let transaction = new Transaction();
+      const transaction = new Transaction();
 
       if (tokenType === 'SOL') {
         // SOL Transfer logic
@@ -174,6 +174,7 @@ export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
       setRecipient('');
       setAmount('');
       setMintAddress('');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error sending token:', error);
       setStatus('Transaction failed.');

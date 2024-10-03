@@ -12,8 +12,6 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
-    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@magic-ext/solana": "^25.12.0",
     "@magic-sdk/admin": "^2.4.1",
     "@solana/spl-token": "^0.4.8",
@@ -35,6 +33,9 @@
     "wagmi": "^2.12.16"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.11.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

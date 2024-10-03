@@ -25,9 +25,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      plugins: [
-        NodeModulesPolyfillPlugin(),
-      ],
+      plugins: [NodeModulesPolyfillPlugin()],
     },
   },
 });
