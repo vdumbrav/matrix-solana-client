@@ -1,44 +1,78 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
+import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction, FC } from 'react';
 import magic from '../utils/magic';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextProps {
   user: any;
-  login: (email: string) => Promise<void>;
+  accessToken: string | null;
+  loginWithMagicLink: (email: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithEmailOTP: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: Dispatch<SetStateAction<any>>;
 }
 
 export const AuthContext = createContext<AuthContextProps>({
   user: null,
-  login: async () => {},
+  accessToken: null,
+  loginWithMagicLink: async () => {},
+  loginWithGoogle: async () => {},
+  loginWithEmailOTP: async () => {},
   logout: async () => {},
   setUser: () => {},
 });
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const checkLoggedIn = async () => {
-      const isLoggedIn = await magic.user.isLoggedIn();
-      if (isLoggedIn) {
-        const userInfo = await magic.user.getInfo();
-        setUser(userInfo);
-        console.log('Magic checkLoggedIn success:', userInfo);
-      }
-    };
-    checkLoggedIn();
+    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('accessToken');
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setAccessToken(storedToken);
+    }
   }, []);
 
-  const login = async (email: string) => {
+  const loginWithMagicLink = async (email: string) => {
     try {
       await magic.auth.loginWithMagicLink({ email });
       const userInfo = await magic.user.getInfo();
+      const token = await magic.user.getIdToken();
       setUser(userInfo);
-      console.log('Magic login success:', userInfo);
+      setAccessToken(token);
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      localStorage.setItem('accessToken', token);
     } catch (error) {
-      console.error('login error:', error);
+      console.error('Magic Link login error:', error);
+    }
+  };
+
+  const loginWithEmailOTP = async (email: string) => {
+    try {
+      await magic.auth.loginWithEmailOTP({ email });
+      const userInfo = await magic.user.getInfo();
+      const token = await magic.user.getIdToken();
+      setUser(userInfo);
+      setAccessToken(token);
+      localStorage.setItem('user', JSON.stringify(userInfo));
+      localStorage.setItem('accessToken', token);
+    } catch (error) {
+      console.error('Email OTP login error:', error);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      await magic.oauth.loginWithRedirect({
+        provider: 'google',
+        redirectURI: window.location.origin + '/callback',
+      });
+    } catch (error) {
+      console.error('Google login error:', error);
     }
   };
 
@@ -46,11 +80,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await magic.user.logout();
       setUser(null);
-      console.log('User logged out successfully.');
+      setAccessToken(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
+      navigate('/login');
     } catch (error) {
-      console.error('logout error:', error);
+      console.error('Logout error:', error);
     }
   };
 
-  return <AuthContext.Provider value={{ user, login, logout, setUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, accessToken, loginWithMagicLink, loginWithGoogle, loginWithEmailOTP, logout, setUser }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
