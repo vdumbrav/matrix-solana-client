@@ -11,6 +11,7 @@ import {
 } from 'matrix-js-sdk';
 import styles from './Chat.module.scss';
 import { ISyncStateData } from 'matrix-js-sdk/lib/sync';
+import { toast } from 'react-toastify';
 
 interface IMessage {
   eventId: string;
@@ -158,6 +159,7 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
+      toast.error('Error sending message');
       // Here you can add a notification for the user
     }
   }, [matrixClient, newMessage, roomId]);

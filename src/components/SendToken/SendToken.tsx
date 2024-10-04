@@ -13,11 +13,12 @@ import {
 interface SendTokenProps {
   matrixClient: MatrixClient;
   roomId: string | null;
+  publicKey: PublicKey | null;
 }
 
-export const SendToken = ({ matrixClient, roomId }: SendTokenProps) => {
+export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) => {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
+  const { sendTransaction } = useWallet();
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [mintAddress, setMintAddress] = useState<string>('');

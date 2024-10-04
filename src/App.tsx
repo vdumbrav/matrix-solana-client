@@ -44,7 +44,7 @@ const App = () => {
                 ) : (
                   <div>Failed to initialize Matrix client.</div>
                 )}
-                <LogoutButton />
+                <LogoutButton matrixUserId={matrixUserId} />
               </div>
             ) : (
               <Navigate to="/login" />

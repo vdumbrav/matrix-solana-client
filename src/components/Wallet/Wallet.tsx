@@ -3,50 +3,55 @@ import { PublicKey, Connection } from '@solana/web3.js';
 import magic from '../../utils/magic';
 import styles from './Wallet.module.scss';
 
-export const Wallet = () => {
-  const [publicAddress, setPublicAddress] = useState<string | null>(null);
+interface WalletProps {
+  publicKey: PublicKey | null;
+}
+
+export const Wallet = ({ publicKey }: WalletProps) => {
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchWalletData = async () => {
-      try {
-        // Get the user's public address
-        const metadata = await magic.user.getMetadata();
-        if (metadata.publicAddress) {
-          setPublicAddress(metadata.publicAddress);
-
+      if (publicKey) {
+        try {
+          // Fetching the balance from Solana Devnet
           const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
-
-          const publicKey = new PublicKey(metadata.publicAddress);
           const balanceLamports = await connection.getBalance(publicKey);
-          const balanceSol = balanceLamports / 1e9; // Convert from lamports to SOL
+          const balanceSol = balanceLamports / 1e9; // Convert lamports to SOL
           setBalance(balanceSol);
-        } else {
-          console.error('Public address is null.');
+        } catch (error) {
+          console.error('Error fetching balance:', error);
         }
-      } catch (error) {
-        console.error('Error fetching wallet data:', error);
       }
     };
 
     fetchWalletData();
-  }, []);
+  }, [publicKey]);
+
+  const openMagicWallet = () => {
+    magic.wallet.showUI().catch((err) => {
+      console.error('Error showing Magic wallet:', err);
+    });
+  };
 
   return (
     <div className={styles.walletContainer}>
       <h3>Solana Wallet</h3>
-      {publicAddress ? (
+      {publicKey ? (
         <div className={styles.data}>
           <p>
-            <strong>Public Key:</strong> {publicAddress}
+            <strong>Public Key:</strong> {publicKey.toBase58()}
           </p>
           <p>
-            <strong>Balance:</strong> {balance} SOL
+            <strong>Balance:</strong> {balance !== null ? balance : 'Loading...'} SOL
           </p>
         </div>
       ) : (
         <p>No wallet connected.</p>
       )}
+      <button className={styles.walletButton} onClick={openMagicWallet}>
+        Open Magic Wallet
+      </button>
     </div>
   );
 };
