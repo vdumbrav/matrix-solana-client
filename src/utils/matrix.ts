@@ -3,26 +3,26 @@ import { createClient, MatrixClient } from 'matrix-js-sdk';
 import { AuthContext } from '../contexts/AuthContext';
 
 const useMatrixClient = () => {
-  const { accessToken } = useContext(AuthContext);
+  const { matrixAccessToken, matrixUserId } = useContext(AuthContext);
   const [matrixClient, setMatrixClient] = useState<MatrixClient | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!matrixAccessToken || !matrixUserId) {
       setLoading(false);
       return;
     }
 
     const initializeMatrixClient = async () => {
       try {
-        console.log('Initializing Matrix client...', accessToken);
+        console.log('Initializing Matrix client...', matrixAccessToken, matrixUserId);
         const client = createClient({
-          baseUrl: 'https://matrix-client.matrix.org',
-          accessToken,
-          userId: "@vdumbrava:matrix.org",
+          baseUrl: 'https://matrix.org',
+          accessToken: matrixAccessToken,
+          userId: matrixUserId,
         });
 
-        await client.startClient();
+        client.startClient();
         setMatrixClient(client);
         setLoading(false);
       } catch (error) {
@@ -32,7 +32,7 @@ const useMatrixClient = () => {
     };
 
     initializeMatrixClient();
-  }, [accessToken]);
+  }, [matrixAccessToken, matrixUserId]);
 
   return { matrixClient, loading };
 };
