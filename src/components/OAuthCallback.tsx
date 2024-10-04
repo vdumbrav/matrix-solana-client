@@ -1,26 +1,12 @@
-import { useEffect, useContext } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import magic from '../utils/magic';
-import { AuthContext } from '../contexts/AuthContext';
 
 export const OAuthCallback = () => {
-  const { setUser, setAccessToken } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const result = await magic.oauth.getRedirectResult();
-        const userInfo = result.magic.userMetadata;
-        const oauthAccessToken = result.oauth.accessToken;
-
-        localStorage.setItem('user', JSON.stringify(userInfo));
-        localStorage.setItem('accessToken', oauthAccessToken);
-
-        setUser(userInfo);
-        setAccessToken(oauthAccessToken);
-
-        // only google is supported for now
         const matrixSSORedirectUrl = `https://matrix.org/_matrix/client/r0/login/sso/redirect/oidc-google?redirectUrl=${encodeURIComponent(window.location.origin + '/matrix-callback')}`;
         window.location.href = matrixSSORedirectUrl;
       } catch (error) {
@@ -30,7 +16,7 @@ export const OAuthCallback = () => {
     };
 
     handleCallback();
-  }, [navigate, setUser, setAccessToken]);
+  }, [navigate]);
 
   return <div>Processing login...</div>;
 };

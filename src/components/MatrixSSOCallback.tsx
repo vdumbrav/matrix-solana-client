@@ -1,6 +1,7 @@
 import { useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import { matrixLoginWithToken } from '../api/matrixApi';
 
 export const MatrixSSOCallback = () => {
   const { setMatrixAccessToken, setMatrixUserId } = useContext(AuthContext);
@@ -17,30 +18,12 @@ export const MatrixSSOCallback = () => {
         return;
       }
 
-      console.log('Completing Matrix login...', loginToken);
-
       try {
-        const response = await fetch('https://matrix.org/_matrix/client/v3/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'm.login.token',
-            token: loginToken,
-          }),
-        });
+        const matrixData = await matrixLoginWithToken(loginToken);
+        setMatrixAccessToken(matrixData.access_token);
+        setMatrixUserId(matrixData.user_id);
 
-        const matrixData = await response.json();
-        if (response.ok) {
-          setMatrixAccessToken(matrixData.access_token);
-          setMatrixUserId(matrixData.user_id);
-          localStorage.setItem('matrixAccessToken', matrixData.access_token);
-          localStorage.setItem('matrixUserId', matrixData.user_id);
-
-          navigate('/');
-        } else {
-          console.error('Matrix login failed:', matrixData.error);
-          navigate('/login');
-        }
+        navigate('/');
       } catch (error) {
         console.error('Matrix SSO callback error:', error);
         navigate('/login');

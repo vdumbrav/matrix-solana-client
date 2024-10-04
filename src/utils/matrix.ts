@@ -8,15 +8,11 @@ const useMatrixClient = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!matrixAccessToken || !matrixUserId) {
-      setLoading(false);
-      return;
-    }
+    let client: MatrixClient;
 
     const initializeMatrixClient = async () => {
-      try {
-        console.log('Initializing Matrix client...', matrixAccessToken, matrixUserId);
-        const client = createClient({
+      if (matrixAccessToken && matrixUserId) {
+        client = createClient({
           baseUrl: 'https://matrix.org',
           accessToken: matrixAccessToken,
           userId: matrixUserId,
@@ -24,14 +20,17 @@ const useMatrixClient = () => {
 
         client.startClient();
         setMatrixClient(client);
-        setLoading(false);
-      } catch (error) {
-        console.error('Matrix client initialization error:', error);
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     initializeMatrixClient();
+
+    return () => {
+      if (client) {
+        client.stopClient();
+      }
+    };
   }, [matrixAccessToken, matrixUserId]);
 
   return { matrixClient, loading };
