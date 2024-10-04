@@ -20,7 +20,7 @@ export const MatrixSSOCallback = () => {
       console.log('Completing Matrix login...', loginToken);
 
       try {
-        const response = await fetch('http://localhost:3000/api/matrix-login', {
+        const response = await fetch('https://matrix.org/_matrix/client/v3/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

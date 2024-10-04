@@ -11,7 +11,7 @@ import { OAuthCallback } from './components/OAuthCallback';
 import { MatrixSSOCallback } from './components/MatrixSSOCallback';
 
 const App = () => {
-  const { user } = useContext(AuthContext);
+  const { matrixUserId } = useContext(AuthContext);
   const { matrixClient, loading } = useMatrixClient();
   const [roomId, setRoomId] = useState<string | null>(null);
 
@@ -27,13 +27,13 @@ const App = () => {
     <div className={styles.appContainer}>
       <ToastContainer />
       <Routes>
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        <Route path="/login" element={!matrixUserId ? <Login /> : <Navigate to="/" />} />
         <Route path="/callback" element={<OAuthCallback />} />
         <Route path="/matrix-callback" element={<MatrixSSOCallback />} />
         <Route
           path="/"
           element={
-            user ? (
+            matrixUserId ? (
               <div className={styles.content}>
                 <h1>Matrix Solana Client</h1>
                 {matrixClient ? (

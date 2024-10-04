@@ -1,14 +1,14 @@
 import { createContext, useState, useEffect, ReactNode, Dispatch, SetStateAction, FC } from 'react';
-import magic from '../utils/magic';
 import { useNavigate } from 'react-router-dom';
 import { MagicUserMetadata } from 'magic-sdk';
+import magic from '../utils/magic';
 
 interface AuthContextProps {
   user: MagicUserMetadata | null;
   accessToken: string | null;
   matrixAccessToken: string | null;
   matrixUserId: string | null;
-  loginWithMagicLink: (email: string) => Promise<void>;
+  loginWithPassword: (username: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setUser: Dispatch<SetStateAction<MagicUserMetadata | null>>;
@@ -22,7 +22,7 @@ export const AuthContext = createContext<AuthContextProps>({
   accessToken: null,
   matrixAccessToken: null,
   matrixUserId: null,
-  loginWithMagicLink: async () => {},
+  loginWithPassword: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
   setUser: () => {},
@@ -45,51 +45,40 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     const storedMatrixUserId = localStorage.getItem('matrixUserId');
 
     if (storedUser && storedToken && storedMatrixToken && storedMatrixUserId) {
-      setUser(JSON.parse(storedUser) as MagicUserMetadata);
+      setUser(JSON.parse(storedUser));
       setAccessToken(storedToken);
       setMatrixAccessToken(storedMatrixToken);
       setMatrixUserId(storedMatrixUserId);
     }
   }, []);
 
-  const loginWithMagicLink = async (email: string) => {
+  const loginWithPassword = async (username: string, password: string) => {
     try {
-      // Log in with Magic Link and get Magic ID token
-      await magic.auth.loginWithMagicLink({ email });
-      const userInfo = await magic.user.getMetadata(); // Get user information from Magic
-      const magicIdToken = await magic.user.getIdToken(); // Get Magic token
-
-      // Update the context and local storage
-      setUser(userInfo);
-      setAccessToken(magicIdToken);
-      localStorage.setItem('user', JSON.stringify(userInfo));
-      localStorage.setItem('accessToken', magicIdToken);
-
-      // Send the Magic OIDC token to the backend to exchange it for a Matrix token
-      const response = await fetch('http://localhost:3000/api/matrix-login', {
+      const response = await fetch('https://matrix.org/_matrix/client/v3/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token: magicIdToken,
-          type: 'm.login.token', // Matrix token login flow
+          type: 'm.login.password',
+          user: username,
+          password: password,
         }),
       });
 
-      const matrixData = await response.json();
-      console.log('Matrix login response:', matrixData);
+      const data = await response.json();
       if (response.ok) {
-        setMatrixAccessToken(matrixData.matrixAccessToken);
-        setMatrixUserId(matrixData.userId);
-        localStorage.setItem('matrixAccessToken', matrixData.matrixAccessToken);
-        localStorage.setItem('matrixUserId', matrixData.userId);
-      } else {
-        console.error('Matrix login failed:', matrixData.error);
-      }
+        setMatrixAccessToken(data.access_token);
+        setMatrixUserId(data.user_id);
+        localStorage.setItem('matrixAccessToken', data.access_token);
+        localStorage.setItem('matrixUserId', data.user_id);
 
-      // Navigate to the home page after successful login
-      navigate('/');
+        // Navigate to home page
+        navigate('/');
+      } else {
+        throw new Error('Login failed');
+      }
     } catch (error) {
-      console.error('Magic Link login error:', error);
+      console.error('Matrix login failed:', error);
+      throw error;
     }
   };
 
@@ -128,7 +117,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         accessToken,
         matrixAccessToken,
         matrixUserId,
-        loginWithMagicLink,
+        loginWithPassword,
         loginWithGoogle,
         logout,
         setUser,

@@ -13,11 +13,11 @@ if (!window.Buffer) {
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
+  <React.Fragment>
     <BrowserRouter>
       <AuthProvider>
         <App />
       </AuthProvider>
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.Fragment>,
 );

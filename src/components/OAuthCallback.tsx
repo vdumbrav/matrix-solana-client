@@ -20,7 +20,8 @@ export const OAuthCallback = () => {
         setUser(userInfo);
         setAccessToken(oauthAccessToken);
 
-        const matrixSSORedirectUrl = `https://matrix.org/_matrix/client/r0/login/sso/redirect?redirectUrl=${encodeURIComponent(window.location.origin + '/matrix-callback')}`;
+        // only google is supported for now
+        const matrixSSORedirectUrl = `https://matrix.org/_matrix/client/r0/login/sso/redirect/oidc-google?redirectUrl=${encodeURIComponent(window.location.origin + '/matrix-callback')}`;
         window.location.href = matrixSSORedirectUrl;
       } catch (error) {
         console.error('OAuth callback error:', error);
