@@ -1,34 +1,44 @@
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useEffect, useState } from 'react';
+import { PublicKey, Connection } from '@solana/web3.js';
+import magic from '../../utils/magic';
 import styles from './Wallet.module.scss';
 
 export const Wallet = () => {
-  const { connection } = useConnection();
-  const { publicKey } = useWallet();
+  const [publicAddress, setPublicAddress] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    const getWalletInfo = async () => {
-      if (!publicKey) return;
+    const fetchWalletData = async () => {
       try {
-        const balanceLamports = await connection.getBalance(publicKey);
-        const balanceSol = balanceLamports / 1e9; // Convert lamports to SOL
-        setBalance(balanceSol);
+        // Get the user's public address
+        const metadata = await magic.user.getMetadata();
+        if (metadata.publicAddress) {
+          setPublicAddress(metadata.publicAddress);
+
+          const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
+
+          const publicKey = new PublicKey(metadata.publicAddress);
+          const balanceLamports = await connection.getBalance(publicKey);
+          const balanceSol = balanceLamports / 1e9; // Convert from lamports to SOL
+          setBalance(balanceSol);
+        } else {
+          console.error('Public address is null.');
+        }
       } catch (error) {
-        console.error('Error fetching wallet info:', error);
+        console.error('Error fetching wallet data:', error);
       }
     };
 
-    getWalletInfo();
-  }, [connection, publicKey]);
+    fetchWalletData();
+  }, []);
 
   return (
     <div className={styles.walletContainer}>
       <h3>Solana Wallet</h3>
-      {publicKey ? (
+      {publicAddress ? (
         <div className={styles.data}>
           <p>
-            <strong>Public Key:</strong> {publicKey.toBase58()}
+            <strong>Public Key:</strong> {publicAddress}
           </p>
           <p>
             <strong>Balance:</strong> {balance} SOL

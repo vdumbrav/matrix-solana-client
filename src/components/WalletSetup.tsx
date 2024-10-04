@@ -2,12 +2,11 @@ import { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { WalletModalProvider, WalletMultiButton, WalletDisconnectButton } from '@solana/wallet-adapter-react-ui';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import { Wallet } from './Wallet/Wallet';
 import { MatrixClient } from 'matrix-js-sdk';
 import { SendToken } from './SendToken/SendToken';
-import styles from './Wallet/Wallet.module.scss';
 
 interface IProps {
   matrixClient: MatrixClient;
@@ -26,11 +25,6 @@ export const WalletSetup = ({ matrixClient, roomId }: IProps) => {
         <WalletModalProvider>
           <Wallet />
           <SendToken matrixClient={matrixClient} roomId={roomId} />
-
-          <div className={styles.wallets}>
-            <WalletMultiButton />
-            <WalletDisconnectButton />
-          </div>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
