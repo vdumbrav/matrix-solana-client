@@ -6,8 +6,9 @@ import styles from './App.module.scss';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Login, Chat, LogoutButton } from './components';
-import { OAuthCallback } from './components/OAuthCallback';
 import { WalletSetup } from './components/WalletSetup';
+import { OAuthCallback } from './components/OAuthCallback';
+import { MatrixSSOCallback } from './components/MatrixSSOCallback';
 
 const App = () => {
   const { user } = useContext(AuthContext);
@@ -28,6 +29,7 @@ const App = () => {
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/callback" element={<OAuthCallback />} />
+        <Route path="/matrix-callback" element={<MatrixSSOCallback />} />
         <Route
           path="/"
           element={
@@ -38,11 +40,11 @@ const App = () => {
                   <>
                     <Chat matrixClient={matrixClient} onRoomIdChange={handleRoomIdChange} />
                     <WalletSetup matrixClient={matrixClient} roomId={roomId} />
-                    <LogoutButton />
                   </>
                 ) : (
                   <div>Failed to initialize Matrix client.</div>
                 )}
+                <LogoutButton />
               </div>
             ) : (
               <Navigate to="/login" />

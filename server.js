@@ -17,13 +17,16 @@ app.post('/api/matrix-login', async (req, res) => {
     const matrixData = await matrixResponse.json();
 
     if (matrixResponse.ok) {
-      res.json({ matrixAccessToken: matrixData.access_token, userId: matrixData.user_id });
+      res.json({
+        matrixAccessToken: matrixData.access_token,
+        userId: matrixData.user_id,
+      });
     } else {
       console.error('Matrix login failed:', matrixData);
       res.status(500).json({ error: 'Matrix login failed', details: matrixData });
     }
   } catch (error) {
-    console.error('Error in Matrix login:', error);
+    console.error('Error during Matrix login:', error);
     res.status(500).json({ error: 'Server error during Matrix login' });
   }
 });
