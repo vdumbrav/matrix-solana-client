@@ -1,24 +1,25 @@
-import { useContext, useEffect, useState } from 'react';
-import { MatrixClient, createClient } from 'matrix-js-sdk';
+import { useState, useEffect, useContext } from 'react';
+import { createClient, MatrixClient } from 'matrix-js-sdk';
 import { AuthContext } from '../contexts/AuthContext';
 
 const useMatrixClient = () => {
-  const { user } = useContext(AuthContext);
+  const { accessToken } = useContext(AuthContext);
   const [matrixClient, setMatrixClient] = useState<MatrixClient | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!accessToken) {
       setLoading(false);
       return;
     }
 
     const initializeMatrixClient = async () => {
       try {
+        console.log('Initializing Matrix client...', accessToken);
         const client = createClient({
           baseUrl: 'https://matrix-client.matrix.org',
-          accessToken: import.meta.env.VITE_MATRIX_ACCESS_TOKEN,
-          userId: import.meta.env.VITE_MATRIX_USER_ID,
+          accessToken,
+          userId: "@vdumbrava:matrix.org",
         });
 
         await client.startClient();
@@ -31,7 +32,7 @@ const useMatrixClient = () => {
     };
 
     initializeMatrixClient();
-  }, [user]);
+  }, [accessToken]);
 
   return { matrixClient, loading };
 };

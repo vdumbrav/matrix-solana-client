@@ -4,21 +4,21 @@ import magic from '../utils/magic';
 import { AuthContext } from '../contexts/AuthContext';
 
 export const OAuthCallback = () => {
-  const navigate = useNavigate();
   const { setUser, setAccessToken } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
         const result = await magic.oauth.getRedirectResult();
+        const userInfo = result.magic.userMetadata;
+        const accessToken = result.oauth.accessToken;
 
-        const { idToken, userMetadata } = result.magic;
+        localStorage.setItem('user', JSON.stringify(userInfo));
+        localStorage.setItem('accessToken', accessToken);
 
-        setUser(userMetadata);
-        setAccessToken(idToken);
-
-        localStorage.setItem('user', JSON.stringify(userMetadata));
-        localStorage.setItem('accessToken', idToken);
+        setUser(userInfo);
+        setAccessToken(accessToken);
 
         navigate('/');
       } catch (error) {

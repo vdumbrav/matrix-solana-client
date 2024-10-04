@@ -1,16 +1,15 @@
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { AuthContext } from '../../contexts/AuthContext';
 import styles from './Login.module.scss';
-import classNames from 'classnames';
+import classnames from 'classnames';
 
 interface FormValues {
   email: string;
 }
 
 export const Login = () => {
-  const { loginWithMagicLink, loginWithGoogle, loginWithEmailOTP } = useContext(AuthContext);
-  const [loginMethod, setLoginMethod] = useState<'magic' | 'otp' | null>(null);
+  const { loginWithMagicLink, loginWithGoogle } = useContext(AuthContext);
   const {
     register,
     handleSubmit,
@@ -18,11 +17,7 @@ export const Login = () => {
   } = useForm<FormValues>();
 
   const onSubmit = async (data: FormValues) => {
-    if (loginMethod === 'magic') {
-      await loginWithMagicLink(data.email);
-    } else if (loginMethod === 'otp') {
-      await loginWithEmailOTP(data.email);
-    }
+    await loginWithMagicLink(data.email);
   };
 
   return (
@@ -41,43 +36,19 @@ export const Login = () => {
               message: 'Invalid email address',
             },
           })}
-          className={classNames(styles.input, {
+          className={classnames(styles.input, {
             [styles.errorInput]: errors.email,
           })}
         />
         {errors.email && <span className={styles.errorMessage}>{errors.email.message}</span>}
-        <button type="submit" onClick={() => setLoginMethod('magic')} disabled={isSubmitting}>
+        <button type="submit" className={styles.buttonSubmit} disabled={isSubmitting}>
           {isSubmitting ? 'Logging in...' : 'Login with Magic Link'}
         </button>
       </form>
 
       <div className={styles.divider}>OR</div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-        <h3>Login with Email OTP</h3>
-        <input
-          type="email"
-          placeholder="Enter your email"
-          {...register('email', {
-            required: 'Email is required',
-            pattern: {
-              value: /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/,
-              message: 'Invalid email address',
-            },
-          })}
-          className={classNames(styles.input, {
-            [styles.errorInput]: errors.email,
-          })}
-        />
-        {errors.email && <span className={styles.errorMessage}>{errors.email.message}</span>}
-        <button type="submit" onClick={() => setLoginMethod('otp')} disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in...' : 'Login with Email OTP'}
-        </button>
-      </form>
-
-      <div className={styles.divider}>OR</div>
-
-      <button onClick={loginWithGoogle} className={styles.googleButton}>
+      <button onClick={loginWithGoogle} className={classnames(styles.googleButton, styles.buttonSubmit)}>
         Login with Google
       </button>
     </div>
