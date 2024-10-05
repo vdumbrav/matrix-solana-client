@@ -17,8 +17,8 @@ export const WalletContent = ({ matrixClient, roomId }: IProps) => {
       try {
         const metadata = await magic.user.getMetadata();
         if (metadata.publicAddress) {
-            const publicKey = new PublicKey(metadata.publicAddress);
-            setPublicKey(publicKey);
+          const publicKey = new PublicKey(metadata.publicAddress);
+          setPublicKey(publicKey);
         } else {
           console.error('Public address is null.');
         }

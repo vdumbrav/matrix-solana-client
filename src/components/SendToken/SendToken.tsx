@@ -1,14 +1,15 @@
-import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
-import styles from './SendToken.module.scss';
-import { toast } from 'react-toastify';
+import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
   createTransferCheckedInstruction,
 } from '@solana/spl-token';
+import { useConnection } from '@solana/wallet-adapter-react';
+import { toast } from 'react-toastify';
+import styles from './SendToken.module.scss';
+import magic from '../../utils/magic';
 
 interface SendTokenProps {
   matrixClient: MatrixClient;
@@ -18,7 +19,6 @@ interface SendTokenProps {
 
 export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) => {
   const { connection } = useConnection();
-  const { sendTransaction } = useWallet();
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [mintAddress, setMintAddress] = useState<string>('');
@@ -65,7 +65,6 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       const transaction = new Transaction();
 
       if (tokenType === 'SOL') {
-        // SOL Transfer logic
         const recipientPublicKey = new PublicKey(recipient);
         const amountInLamports = parseFloat(amount) * 1e9; // 1 SOL = 1e9 lamports
 
@@ -77,20 +76,15 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
           }),
         );
       } else {
-        // SPL Token transfer logic
         const mintPublicKey = new PublicKey(mintAddress);
         const recipientPublicKey = new PublicKey(recipient);
         const amountInDecimals = parseFloat(amount);
 
-        // Fetch the mint account to get decimals
         const mintAccountInfo = await connection.getParsedAccountInfo(mintPublicKey);
         if (!mintAccountInfo.value) {
           setStatus('Invalid SPL token mint address.');
           return;
         }
-
-        // Debugging: Log the fetched mint account data
-        console.log('Mint Account Info:', mintAccountInfo.value.data);
 
         // Check if 'parsed.info.decimals' exists
         if (
@@ -105,56 +99,56 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
         }
 
         const decimals = mintAccountInfo.value.data.parsed.info.decimals;
-
-        // Get associated token addresses
         const senderATA = await getAssociatedTokenAddress(mintPublicKey, publicKey);
         const recipientATA = await getAssociatedTokenAddress(mintPublicKey, recipientPublicKey);
 
         const instructions: TransactionInstruction[] = [];
 
-        // Check if sender's ATA exists
         const senderAccountInfo = await connection.getAccountInfo(senderATA);
         if (!senderAccountInfo) {
-          // Sender's ATA does not exist; alert user
           setStatus('Sender does not have an associated token account for this mint.');
-          console.error('Sender ATA does not exist:', senderATA.toBase58());
           return;
         }
 
-        // Check if recipient's ATA exists
         const recipientAccountInfo = await connection.getAccountInfo(recipientATA);
         if (!recipientAccountInfo) {
-          // Create the recipient's ATA
           const createRecipientATAInstruction = createAssociatedTokenAccountInstruction(
-            publicKey, // Payer
-            recipientATA, // Associated token account address
-            recipientPublicKey, // Owner of the new account
-            mintPublicKey, // Mint
+            publicKey,
+            recipientATA,
+            recipientPublicKey,
+            mintPublicKey,
           );
           instructions.push(createRecipientATAInstruction);
         }
 
-        // Create the transfer instruction
         const transferInstruction = createTransferCheckedInstruction(
-          senderATA, // Source ATA
-          mintPublicKey, // Mint
-          recipientATA, // Destination ATA
-          publicKey, // Owner of the source ATA
-          amountInDecimals * Math.pow(10, decimals), // Amount in smallest units
-          decimals, // Decimals
+          senderATA,
+          mintPublicKey,
+          recipientATA,
+          publicKey,
+          amountInDecimals * Math.pow(10, decimals),
+          decimals,
         );
 
         instructions.push(transferInstruction);
-
-        // Add all instructions to the transaction
         transaction.add(...instructions);
       }
 
-      // Send the transaction using the wallet adapter
-      const signature = await sendTransaction(transaction, connection);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
 
-      // Optionally, confirm the transaction
-      const confirmation = await connection.confirmTransaction(signature, 'finalized');
+      const { rawTransaction } = await magic.solana.signTransaction(transaction);
+
+      const signature = await connection.sendRawTransaction(rawTransaction);
+
+      const confirmationStrategy = {
+        signature: signature,
+        blockhash: blockhash,
+        lastValidBlockHeight: lastValidBlockHeight,
+      };
+
+      const confirmation = await connection.confirmTransaction(confirmationStrategy, 'finalized');
 
       if (confirmation.value.err) {
         throw new Error('Transaction failed.');
@@ -171,7 +165,6 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
         }
       }
 
-      // Reset form fields
       setRecipient('');
       setAmount('');
       setMintAddress('');
