@@ -140,7 +140,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
       const { rawTransaction } = await magic.solana.signTransaction(transaction);
 
-      const signature = await connection.sendRawTransaction(rawTransaction);
+      const signature = await connection.sendRawTransaction(Buffer.from(rawTransaction));
 
       const confirmationStrategy = {
         signature: signature,
