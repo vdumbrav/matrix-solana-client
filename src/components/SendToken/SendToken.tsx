@@ -61,7 +61,6 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
     }
 
     try {
-      setStatus('Preparing transaction...');
       const transaction = new Transaction();
 
       if (tokenType === 'SOL') {
@@ -142,13 +141,14 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
       const signature = await connection.sendRawTransaction(Buffer.from(rawTransaction));
 
-      const confirmationStrategy = {
-        signature: signature,
-        blockhash: blockhash,
-        lastValidBlockHeight: lastValidBlockHeight,
-      };
-
-      const confirmation = await connection.confirmTransaction(confirmationStrategy, 'finalized');
+      const confirmation = await connection.confirmTransaction(
+        {
+          signature,
+          blockhash,
+          lastValidBlockHeight,
+        },
+        'finalized',
+      );
 
       if (confirmation.value.err) {
         throw new Error('Transaction failed.');
@@ -158,11 +158,8 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       toast.success(`Transaction successful! Signature: ${signature}`);
 
       if (roomId) {
-        if (tokenType === 'SOL') {
-          await matrixClient.sendTextMessage(roomId, `SOL Transaction successful! Signature: ${signature}`);
-        } else {
-          await matrixClient.sendTextMessage(roomId, `SPL Token Transaction successful! Signature: ${signature}`);
-        }
+        const message = `${tokenType} Transaction successful! Signature: ${signature}`;
+        await matrixClient.sendTextMessage(roomId, message);
       }
 
       setRecipient('');
