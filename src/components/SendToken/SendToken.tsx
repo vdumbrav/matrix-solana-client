@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
-import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
+import { PublicKey, Transaction, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
@@ -61,6 +61,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
     }
 
     try {
+      setStatus('Preparing transaction...');
       const transaction = new Transaction();
 
       if (tokenType === 'SOL') {
@@ -135,11 +136,17 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
       transaction.feePayer = publicKey;
 
-      const { rawTransaction } = await magic.solana.signTransaction(transaction);
+      const { rawTransaction } = await magic.solana.signTransaction(transaction, {
+        requireAllSignatures: true,
+        verifySignatures: false,
+      });
 
-      const signature = await connection.sendRawTransaction(Buffer.from(rawTransaction));
+      const signedTransaction = Transaction.from(rawTransaction);
+
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
       const confirmation = await connection.confirmTransaction(
         {
