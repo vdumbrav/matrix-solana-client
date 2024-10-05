@@ -28,10 +28,9 @@ export const Wallet = ({ publicKey }: WalletProps) => {
     fetchWalletData();
   }, [publicKey]);
 
-  const openMagicWallet = () => {
-    magic.wallet.showUI().catch((err) => {
-      console.error('Error showing Magic wallet:', err);
-    });
+  const openMagicWallet = async () => {
+    const info = await magic.wallet.getInfo();
+    console.log('info:', info);
   };
 
   return (
