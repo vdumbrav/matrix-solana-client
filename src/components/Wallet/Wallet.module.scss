@@ -19,6 +19,11 @@
   }
 }
 
+.walletButtons {
+  display: flex;
+  justify-content: space-between;
+}
+
 .walletButton {
   margin-top: 4px;
   padding: 8px 16px;
@@ -36,5 +41,17 @@
 
   &:not(:disabled):hover {
     background-color: #45a049;
+  }
+
+  &.revealButton {
+    background-color: #2196f3;
+
+    &:not(:disabled):hover {
+      background-color: #1e87f0;
+    }
+
+    &:disabled {
+      background-color: #90caf9;
+    }
   }
 }
