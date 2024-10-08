@@ -9,16 +9,16 @@
   background-color: #f5f5f5;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
 
-  h3 {
-    margin: 0 0 16px;
-    color: #333;
-  }
-
   p {
     margin: 8px 0;
     word-break: break-all;
     color: #555;
   }
+}
+
+h3 {
+  margin: 0 0 16px;
+  color: #333;
 }
 
 .walletButtons {
@@ -54,14 +54,14 @@
     }
 
     &:disabled {
-      background-color: #00335c;
+      background-color: #ccc;
     }
   }
 }
 
 .walletColumns {
   display: flex;
-  gap: 16px;
   flex-wrap: wrap;
   width: 100%;
+  gap: 16px;
 }

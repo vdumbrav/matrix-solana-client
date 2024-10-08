@@ -5,6 +5,13 @@ import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfil
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler', // Use the modern Sass API
+      },
+    },
+  },
   optimizeDeps: {
     esbuildOptions: {
       // Node.js global to browser global polyfills

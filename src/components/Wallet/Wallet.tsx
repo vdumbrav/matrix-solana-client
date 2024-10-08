@@ -46,12 +46,16 @@ export const Wallet = ({ publicKey }: WalletProps) => {
             </p>
           </div>
           <div className={styles.walletButtons}>
-          <button className={styles.walletButton} onClick={fetchWalletData} type={'button'}>
-            Refetch Balance
-          </button>
-          <button className={classnames(styles.walletButton, styles.revealButton)} onClick={revealPrivateKey} type={'button'}>
-            Reveal Private Key
-          </button>
+            <button className={styles.walletButton} onClick={fetchWalletData} type={'button'}>
+              Refetch Balance
+            </button>
+            <button
+              className={classnames(styles.walletButton, styles.revealButton)}
+              onClick={revealPrivateKey}
+              type={'button'}
+            >
+              Reveal Private Key
+            </button>
           </div>
         </>
       ) : (

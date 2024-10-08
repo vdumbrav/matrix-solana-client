@@ -74,7 +74,7 @@ export const Faucet = ({ publicKey }: FaucetProps) => {
         </button>
       </div>
 
-      {<p className={classnames(styles.status ,{[styles.hiddenStatus]: status})}>{status}</p>}
+      {<p className={classnames(styles.status, { [styles.hiddenStatus]: status })}>{status}</p>}
 
       <button onClick={requestAirdrop} className={styles.faucetButton} disabled={!publicKey}>
         Request {amount} SOL Airdrop
