@@ -1,29 +1,56 @@
 .faucetContainer {
-  padding: 10px;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  max-width: 360px;
+  margin: 8px auto;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+h3 {
+  margin: 0 0 16px;
+  color: #333;
 }
 
 .faucetButton {
-  padding: 10px 20px;
-  background-color: #007bff;
+  margin-top: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
   color: #fff;
   border: none;
-  border-radius: 5px;
-  cursor: pointer;
+  border-radius: 4px;
+  background-color: #007bff;
+  font-size: 1rem;
 
   &:hover {
     background-color: #0056b3;
   }
 
   &:disabled {
+    cursor: not-allowed;
     background-color: #ccc;
+  }
+
+  &.active {
+    background-color: #0050cf;
   }
 }
 
 .status {
-  margin-top: 10px;
-  color: #333;
+  flex: 1;
+  margin: 8px 0;
+  transition: 0.3s opacity;
+  font-size: 1rem;
+
+  &.hiddenStatus {
+    opacity: 1;
+  }
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
