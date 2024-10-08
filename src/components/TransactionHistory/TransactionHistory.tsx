@@ -59,7 +59,7 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {tx.transaction.signatures[0].substring(0, 10)}...
+                  {tx.transaction.signatures[0]}
                 </a>
               </p>
               <p>

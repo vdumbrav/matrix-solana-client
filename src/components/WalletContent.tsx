@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
+import { PublicKey } from '@solana/web3.js';
 import magic from '../utils/magic';
 import { Wallet } from './Wallet/Wallet';
 import { SendToken } from './SendToken/SendToken';
-import { PublicKey } from '@solana/web3.js';
 import { TransactionHistory } from './TransactionHistory/TransactionHistory';
 import { Faucet } from './Faucet/Faucet';
-
+import stylesWallet from './Wallet/Wallet.module.scss';
 interface IProps {
   matrixClient: MatrixClient;
   roomId: string | null;
@@ -34,10 +34,15 @@ export const WalletContent = ({ matrixClient, roomId }: IProps) => {
 
   return (
     <>
-      <Wallet publicKey={publicKey} />
-      <SendToken matrixClient={matrixClient} roomId={roomId} publicKey={publicKey} />
-      <Faucet publicKey={publicKey} />
-      <TransactionHistory publicKey={publicKey} />
+      <div className={stylesWallet.walletColumns}>
+        <SendToken matrixClient={matrixClient} roomId={roomId} publicKey={publicKey} />
+        <Faucet publicKey={publicKey} />
+      </div>
+
+      <div className={stylesWallet.walletColumns}>
+        <Wallet publicKey={publicKey} />
+        <TransactionHistory publicKey={publicKey} />
+      </div>
     </>
   );
 };
