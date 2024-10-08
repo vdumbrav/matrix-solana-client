@@ -37,14 +37,12 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
     fetchTransactions();
   }, [publicKey]);
 
-  if (!publicKey) {
-    return <p>Wallet not connected.</p>;
-  }
-
   return (
     <div className={styles.transactionHistoryContainer}>
       <h3>Transaction History</h3>
-      {loading ? (
+      {!publicKey ? (
+        <p>No wallet connected.</p>
+      ) : loading ? (
         <p>Loading transactions...</p>
       ) : transactions.length === 0 ? (
         <p>No transactions found.</p>
