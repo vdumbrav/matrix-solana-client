@@ -23,8 +23,7 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
 
         const parsedTransactions = await Promise.all(
           signatures.map(async (sig) => {
-            const tx = await connection.getParsedTransaction(sig.signature);
-            return tx;
+            return await connection.getParsedTransaction(sig.signature);
           }),
         );
 

@@ -85,8 +85,10 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     const fetchMembers = async () => {
       setIsLoadingMembers(true);
       const room = matrixClient.getRoom(roomId);
-      if (room) setMembers(room.getJoinedMembers());
-      setIsLoadingMembers(false);
+      if (room) {
+        setMembers(room.getJoinedMembers());
+        setIsLoadingMembers(false);
+      }
     };
 
     fetchMembers();
