@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { ChangeEvent, useEffect, useRef, useState, useCallback } from 'react';
 import {
   Room,
   RoomMember,
@@ -12,6 +12,7 @@ import {
 import { ISyncStateData } from 'matrix-js-sdk/lib/sync';
 import { toast } from 'react-toastify';
 import styles from './Chat.module.scss';
+import { formatTimestamp } from '../../utils/utils';
 
 interface IMessage {
   eventId: string;
@@ -38,23 +39,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = matrixClient.getUserId();
-
-  // Helper function to format timestamp
-  const formatTimestamp = (timestamp: number): string => {
-    const messageDate = new Date(timestamp);
-    const now = new Date();
-
-    const isToday =
-      messageDate.getDate() === now.getDate() &&
-      messageDate.getMonth() === now.getMonth() &&
-      messageDate.getFullYear() === now.getFullYear();
-
-    if (isToday) {
-      return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return `${messageDate.toLocaleDateString()} ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-  };
 
   const handleSync = useCallback(
     (state: SyncState, _prevState: SyncState | null, res?: ISyncStateData) => {
@@ -191,10 +175,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
   const displayedMembers = members.slice(0, 3);
   const totalMembers = members.length;
 
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => a.timestamp - b.timestamp);
-  }, [messages]);
-
   return (
     <div className={styles.chatContainer}>
       <h2 className={styles.chatTitle}>Matrix Chat</h2>
@@ -251,10 +231,10 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
       <div className={styles.chatMessages}>
         {isLoadingMessages && roomId ? (
           <div>Loading messages...</div>
-        ) : sortedMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div className={styles.noMessages}>No messages</div>
         ) : (
-          sortedMessages.map((msg) => (
+          messages.map((msg) => (
             <div key={msg.eventId} className={styles.message}>
               <div className={styles.messageContent}>
                 <span className={styles.sender}>{msg.sender}</span>

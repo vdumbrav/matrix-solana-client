@@ -16,3 +16,19 @@ export const clearMatrixAuthFromLocalStorage = () => {
   localStorage.removeItem('matrixAccessToken');
   localStorage.removeItem('matrixUserId');
 };
+
+export const formatTimestamp = (timestamp: number): string => {
+  const messageDate = new Date(timestamp);
+  const now = new Date();
+
+  const isToday =
+    messageDate.getDate() === now.getDate() &&
+    messageDate.getMonth() === now.getMonth() &&
+    messageDate.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else {
+    return `${messageDate.toLocaleDateString()} ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+};

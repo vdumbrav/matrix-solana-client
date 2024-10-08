@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Connection, PublicKey, ParsedTransactionWithMeta } from '@solana/web3.js';
 import styles from './TransactionHistory.module.scss';
 import magic from '../../utils/magic';
+import { formatTimestamp } from '../../utils/utils';
 
 interface TransactionHistoryProps {
   publicKey: PublicKey | null;
@@ -62,7 +63,7 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
                 </a>
               </p>
               <p>
-                <strong>Block Time:</strong> {tx.blockTime ? new Date(tx.blockTime * 1000).toLocaleString() : 'N/A'}
+                <strong>Block Time:</strong> {tx.blockTime ? formatTimestamp(tx.blockTime * 1000) : 'N/A'}
               </p>
             </li>
           ))}

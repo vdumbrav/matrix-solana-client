@@ -6,7 +6,7 @@ import {
   getMatrixAuthFromLocalStorage,
   saveMatrixAuthToLocalStorage,
   clearMatrixAuthFromLocalStorage,
-} from '../utils/storage';
+} from '../utils/utils';
 
 interface AuthContextProps {
   matrixAccessToken: string | null;
