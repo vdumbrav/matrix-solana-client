@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState, useCallback } from 'react';
+import { ChangeEvent, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   Room,
   RoomMember,
@@ -9,9 +9,9 @@ import {
   ClientEvent,
   SyncState,
 } from 'matrix-js-sdk';
-import styles from './Chat.module.scss';
 import { ISyncStateData } from 'matrix-js-sdk/lib/sync';
 import { toast } from 'react-toastify';
+import styles from './Chat.module.scss';
 
 interface IMessage {
   eventId: string;
@@ -23,7 +23,7 @@ interface IMessage {
 interface IProps {
   matrixClient: MatrixClient;
   initialRoomId?: string | null;
-  onRoomIdChange: (roomId: string | null) => void; // Callback for room change
+  onRoomIdChange: (roomId: string | null) => void;
 }
 
 export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IProps) => {
@@ -37,14 +37,31 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const currentUserId = matrixClient.getUserId(); // Get the current user's ID
+  const currentUserId = matrixClient.getUserId();
 
-  // Matrix sync handler
+  // Helper function to format timestamp
+  const formatTimestamp = (timestamp: number): string => {
+    const messageDate = new Date(timestamp);
+    const now = new Date();
+
+    const isToday =
+      messageDate.getDate() === now.getDate() &&
+      messageDate.getMonth() === now.getMonth() &&
+      messageDate.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+      return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return `${messageDate.toLocaleDateString()} ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  };
+
   const handleSync = useCallback(
     (state: SyncState, _prevState: SyncState | null, res?: ISyncStateData) => {
       console.log('Matrix sync state:', state);
       if (state === 'ERROR') {
         console.error('Sync error:', res);
+        toast.error('Sync error occurred. Please try again.');
       } else if (state === 'PREPARED') {
         fetchJoinedRooms();
       }
@@ -52,7 +69,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     [matrixClient],
   );
 
-  // Initialize Matrix client and start synchronization
   useEffect(() => {
     matrixClient.on(ClientEvent.Sync, handleSync);
     matrixClient.startClient({ initialSyncLimit: 100 });
@@ -63,7 +79,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     };
   }, [matrixClient, handleSync]);
 
-  // Fetch joined rooms
   const fetchJoinedRooms = useCallback(() => {
     setIsLoadingRooms(true);
     const currentRooms = matrixClient.getRooms();
@@ -71,7 +86,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     setIsLoadingRooms(false);
   }, [matrixClient]);
 
-  // Update room list when membership changes
   useEffect(() => {
     const handleRoomMembership = fetchJoinedRooms;
     matrixClient.on(RoomEvent.MyMembership, handleRoomMembership);
@@ -81,7 +95,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     };
   }, [matrixClient, fetchJoinedRooms]);
 
-  // Fetch room members
   useEffect(() => {
     if (!roomId) return;
 
@@ -95,7 +108,6 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     fetchMembers();
   }, [matrixClient, roomId]);
 
-  // Fetch and display messages
   useEffect(() => {
     if (!roomId) return;
 
@@ -113,27 +125,30 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
           sender: event.getSender() || '',
           content: { body: event.getContent().body || '' },
           timestamp: event.getTs(),
-        }));
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
 
-    // Load initial messages
-    const loadMessages = () => {
-      const initialMessages = mapEventsToMessages(timelineSet.getLiveTimeline().getEvents());
-      setMessages(initialMessages);
-      setIsLoadingMessages(false);
+    const loadMessages = async () => {
+      try {
+        const initialMessages = mapEventsToMessages(timelineSet.getLiveTimeline().getEvents());
+        setMessages(initialMessages);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        toast.error('Error loading messages');
+      } finally {
+        setIsLoadingMessages(false);
+      }
     };
 
-    // Handler for new messages
     const onRoomTimeline = (event: MatrixEvent) => {
       if (event.getType() === EventType.RoomMessage) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            eventId: event.getId() || '',
-            sender: event.getSender() || '',
-            content: event.getContent(),
-            timestamp: event.getTs(),
-          },
-        ]);
+        const newMsg: IMessage = {
+          eventId: event.getId() || '',
+          sender: event.getSender() || '',
+          content: { body: event.getContent().body || '' },
+          timestamp: event.getTs(),
+        };
+        setMessages((prev) => [...prev, newMsg]);
         setIsLoadingMessages(false);
       }
     };
@@ -160,35 +175,41 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Error sending message');
-      // Here you can add a notification for the user
     }
   }, [matrixClient, newMessage, roomId]);
 
-  // Handle room selection change
   const handleRoomChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
       const selectedRoomId = event.target.value;
-      setRoomId(selectedRoomId);
+      setRoomId(selectedRoomId || null);
       setMessages([]);
-      onRoomIdChange(selectedRoomId); // Send the roomId to the parent component
+      onRoomIdChange(selectedRoomId || null);
     },
     [onRoomIdChange],
   );
 
-  // Limit the number of displayed members
-  const displayedMembers = members.slice(0, 3); // Limit to 3 members
+  const displayedMembers = members.slice(0, 3);
   const totalMembers = members.length;
+
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => a.timestamp - b.timestamp);
+  }, [messages]);
 
   return (
     <div className={styles.chatContainer}>
-      <h2 className={styles.title}>Matrix Chat</h2>
+      <h2 className={styles.chatTitle}>Matrix Chat</h2>
 
       {/* Room Selector */}
-      <div className={styles.roomSelect}>
+      <div className={styles.chatRoomSelect}>
         {isLoadingRooms ? (
           <div>Loading rooms...</div>
         ) : (
-          <select value={roomId || ''} onChange={handleRoomChange} className={styles.roomSelect}>
+          <select
+            value={roomId || ''}
+            onChange={handleRoomChange}
+            className={styles.chatRoomSelectSelect}
+            aria-label="Select chat room"
+          >
             <option value="">Select a room</option>
             {rooms.map((room) => (
               <option key={room.roomId} value={room.roomId}>
@@ -201,39 +222,45 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
 
       {/* Members List */}
       {roomId && (
-        <div className={styles.membersList}>
-          <h3>Members {isLoadingMembers && <span>(Loading...)</span>}</h3>
-          <ul>
+        <div className={styles.chatMembersList}>
+          <div className={styles.chatMembersList__header}>
+            <h3>Members</h3>
+            {isLoadingMembers && <span className="loading">(Loading...)</span>}
+          </div>
+          <ul className={styles.chatMembersList__list}>
             {/* Display current user */}
-            <li key={currentUserId} className={styles.currentUser}>
+            <li key={currentUserId} className={`${styles.memberItem} ${styles.currentUser}`}>
               You: {currentUserId}
             </li>
             {/* Display up to 3 other members */}
             {displayedMembers.map((member) =>
               member.userId !== currentUserId ? (
-                <li key={member.userId} className={styles.member}>
+                <li key={member.userId} className={`${styles.memberItem} ${styles.member}`}>
                   {member.name || member.userId}
                 </li>
               ) : null,
             )}
           </ul>
           {/* Show total number of members */}
-          {totalMembers > 3 && <p>And {totalMembers - 3} more members...</p>}
-          <p>Total members: {totalMembers}</p>
+          {totalMembers > 3 && <p className={styles.chatMembersList__total}>And {totalMembers - 3} more members...</p>}
+          <p className={styles.chatMembersList__total}>Total members: {totalMembers}</p>
         </div>
       )}
 
       {/* Messages */}
-      <div className={styles.messages}>
+      <div className={styles.chatMessages}>
         {isLoadingMessages && roomId ? (
           <div>Loading messages...</div>
-        ) : messages.length === 0 ? (
-          <div>No messages</div>
+        ) : sortedMessages.length === 0 ? (
+          <div className={styles.noMessages}>No messages</div>
         ) : (
-          messages.map((msg) => (
+          sortedMessages.map((msg) => (
             <div key={msg.eventId} className={styles.message}>
-              <span className={styles.sender}>{msg.sender}</span>: {msg.content.body}
-              <span className={styles.timestamp}>{new Date(msg.timestamp).toLocaleTimeString()}</span>
+              <div className={styles.messageContent}>
+                <span className={styles.sender}>{msg.sender}</span>
+                <span className={styles.text}>{msg.content.body}</span>
+              </div>
+              <span className={styles.timestamp}>{formatTimestamp(msg.timestamp)}</span>
             </div>
           ))
         )}
@@ -242,7 +269,7 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
 
       {/* Input Area */}
       {roomId && (
-        <div className={styles.inputArea}>
+        <div className={styles.chatInputArea}>
           <input
             type="text"
             placeholder="Enter message"
@@ -250,8 +277,14 @@ export const Chat = ({ matrixClient, initialRoomId = null, onRoomIdChange }: IPr
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             className={styles.messageInput}
+            aria-label="Enter message"
           />
-          <button onClick={sendMessage} className={styles.sendButton}>
+          <button
+            onClick={sendMessage}
+            className={styles.sendButton}
+            disabled={!newMessage.trim()}
+            aria-label="Send message"
+          >
             Send
           </button>
         </div>
