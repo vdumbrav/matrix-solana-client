@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
-import styles from './Faucet.module.scss';
+import { PublicKey, Connection } from '@solana/web3.js';
 import { toast } from 'react-toastify';
-import classNames from 'classnames';
 import classnames from 'classnames';
+import styles from './Faucet.module.scss';
+import magic from '../../utils/magic';
 
 interface FaucetProps {
   publicKey: PublicKey | null;
@@ -21,7 +21,7 @@ export const Faucet = ({ publicKey }: FaucetProps) => {
 
     try {
       setStatus(`Requesting ${amount} SOL airdrop...`);
-      const connection = new Connection(clusterApiUrl('devnet'));
+      const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
@@ -50,25 +50,25 @@ export const Faucet = ({ publicKey }: FaucetProps) => {
       <div className={styles.buttonGroup}>
         <button
           onClick={() => setAmount(0.5)}
-          className={classNames(styles.faucetButton, { [styles.active]: amount === 0.5 })}
+          className={classnames(styles.faucetButton, { [styles.active]: amount === 0.5 })}
         >
           0.5 SOL
         </button>
         <button
           onClick={() => setAmount(1)}
-          className={classNames(styles.faucetButton, { [styles.active]: amount === 1 })}
+          className={classnames(styles.faucetButton, { [styles.active]: amount === 1 })}
         >
           1 SOL
         </button>
         <button
           onClick={() => setAmount(2.5)}
-          className={classNames(styles.faucetButton, { [styles.active]: amount === 2.5 })}
+          className={classnames(styles.faucetButton, { [styles.active]: amount === 2.5 })}
         >
           2.5 SOL
         </button>
         <button
           onClick={() => setAmount(5)}
-          className={classNames(styles.faucetButton, { [styles.active]: amount === 5 })}
+          className={classnames(styles.faucetButton, { [styles.active]: amount === 5 })}
         >
           5 SOL
         </button>

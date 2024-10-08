@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Connection, PublicKey, ParsedTransactionWithMeta } from '@solana/web3.js';
 import styles from './TransactionHistory.module.scss';
+import magic from '../../utils/magic';
 
 interface TransactionHistoryProps {
   publicKey: PublicKey | null;
@@ -16,7 +17,7 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
 
       setLoading(true);
       try {
-        const connection = new Connection('https://api.devnet.solana.com');
+        const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
         const signatures = await connection.getSignaturesForAddress(publicKey);
 
         const parsedTransactions = await Promise.all(
