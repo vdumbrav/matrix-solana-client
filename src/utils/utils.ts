@@ -17,7 +17,7 @@ export const clearMatrixAuthFromLocalStorage = () => {
   localStorage.removeItem('matrixUserId');
 };
 
-export const formatTimestamp = (timestamp: number): string => {
+export const formatTimestamp = (timestamp: number, fullDate = false): string => {
   const messageDate = new Date(timestamp);
   const now = new Date();
 
@@ -26,7 +26,7 @@ export const formatTimestamp = (timestamp: number): string => {
     messageDate.getMonth() === now.getMonth() &&
     messageDate.getFullYear() === now.getFullYear();
 
-  if (isToday) {
+  if (isToday && !fullDate) {
     return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } else {
     return `${messageDate.toLocaleDateString()} ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;

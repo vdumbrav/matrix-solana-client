@@ -63,7 +63,7 @@ export const TransactionHistory = ({ publicKey }: TransactionHistoryProps) => {
                 </a>
               </p>
               <p>
-                <strong>Block Time:</strong> {tx.blockTime ? formatTimestamp(tx.blockTime * 1000) : 'N/A'}
+                <strong>Block Time:</strong> {tx.blockTime ? formatTimestamp(tx.blockTime * 1000, true) : 'N/A'}
               </p>
             </li>
           ))}
