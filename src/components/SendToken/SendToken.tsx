@@ -48,15 +48,12 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
     try {
       setStatus('Preparing transaction...');
-      const recipientPublicKey = new PublicKey(recipient);
-      const amountInLamports = parseFloat(amount) * 1e9; // Convert to lamports
-
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
-          toPubkey: recipientPublicKey,
-          lamports: amountInLamports,
-        }),
+          toPubkey: new PublicKey(recipient),
+          lamports: parseFloat(amount) * 1e9,
+        })
       );
 
       const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
@@ -64,11 +61,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      const { rawTransaction } = await magic.solana.signTransaction(transaction, {
-        requireAllSignatures: true,
-        verifySignatures: false,
-      });
-
+      const { rawTransaction } = await magic.solana.signTransaction(transaction);
       const signedTransaction = Transaction.from(rawTransaction);
       const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
@@ -94,7 +87,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       setAmount('');
     } catch (error: any) {
       console.error('Error sending token:', error);
-      setStatus('Transaction failed.');
+      setStatus(`Transaction failed: ${error.message}`);
       toast.error(`Transaction failed: ${error.message}`);
     }
   };
