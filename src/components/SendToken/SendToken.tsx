@@ -6,7 +6,7 @@ import styles from './SendToken.module.scss';
 import magic from '../../utils/magic';
 
 interface SendTokenProps {
-  matrixClient: MatrixClient;
+  matrixClient: MatrixClient | null;
   roomId: string | null;
   publicKey: PublicKey | null;
 }
@@ -15,6 +15,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [status, setStatus] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const isValidPublicKey = (key: string): boolean => {
     try {
@@ -47,7 +48,9 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
     }
 
     try {
+      setIsLoading(true);
       setStatus('Preparing transaction...');
+
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
@@ -56,7 +59,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
         })
       );
 
-      const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
+      const connection = new Connection(magic.solana.solanaConfig.rpcUrl, 'confirmed');
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
@@ -78,7 +81,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       setStatus(`Transaction successful! Signature: ${signature}`);
       toast.success(`Transaction successful! Signature: ${signature}`);
 
-      if (roomId) {
+      if (roomId && matrixClient) {
         const message = `SOL Transfer Successful! Signature: ${signature}`;
         await matrixClient.sendTextMessage(roomId, message);
       }
@@ -89,6 +92,8 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
       console.error('Error sending token:', error);
       setStatus(`Transaction failed: ${error.message}`);
       toast.error(`Transaction failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -112,8 +117,8 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
         className={styles.input}
       />
 
-      <button onClick={sendToken} className={styles.sendButton} disabled={!publicKey}>
-        Send
+      <button onClick={sendToken} className={styles.sendButton} disabled={!publicKey || isLoading}>
+        {isLoading ? 'Sending...' : 'Send'}
       </button>
 
       {status && <p className={styles.status}>{status}</p>}
