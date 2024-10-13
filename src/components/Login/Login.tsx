@@ -1,30 +1,34 @@
 import { useContext, useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { AuthContext } from '../../contexts/AuthContext';
 import styles from './Login.module.scss';
 import classnames from 'classnames';
 
-interface FormValues {
-  username: string;
-  password: string;
-}
-
 export const Login = () => {
-  const { loginWithPassword, loginWithGoogle } = useContext(AuthContext);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>();
+  const { loginWithGoogle, loginWithMagicLink } = useContext(AuthContext);
+  const [email, setEmail] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const onSubmit = async (data: FormValues) => {
+  const handleLoginWithEmail = async () => {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      await loginWithMagicLink(email);
+    } catch (error) {
+      setErrorMessage('Failed to send Magic Link. Please check your email.');
+      console.error('Magic Link login error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
     try {
       setErrorMessage(null);
-      await loginWithPassword(data.username, data.password);
+      await loginWithGoogle();
     } catch (error) {
-      setErrorMessage('Login failed. Please check your username and password.');
-      console.error('Login error:', error);
+      setErrorMessage('Google login failed.');
+      console.error('Google login error:', error);
     }
   };
 
@@ -32,36 +36,26 @@ export const Login = () => {
     <div className={styles.loginContainer}>
       <h2>Login</h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-        <h3>Login with Username and Password</h3>
+      <div className={styles.form}>
+        <h3>Login with your Email</h3>
         <input
-          type="text"
-          placeholder="Enter your Matrix username"
+          type="email"
+          placeholder="Enter your email"
           disabled={isSubmitting}
-          {...register('username', { required: 'Username is required' })}
-          className={classnames(styles.input, { [styles.errorInput]: errors.username })}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={classnames(styles.input)}
         />
-        {errors.username && <span className={styles.errorMessage}>{errors.username.message}</span>}
-
-        <input
-          type="password"
-          placeholder="Enter your password"
-          disabled={isSubmitting}
-          {...register('password', { required: 'Password is required' })}
-          className={classnames(styles.input, { [styles.errorInput]: errors.password })}
-        />
-        {errors.password && <span className={styles.errorMessage}>{errors.password.message}</span>}
-
         {errorMessage && <span className={styles.errorMessage}>{errorMessage}</span>}
 
-        <button type="submit" className={styles.buttonSubmit} disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in...' : 'Login with Password'}
+        <button onClick={handleLoginWithEmail} className={styles.buttonSubmit} disabled={isSubmitting || !email}>
+          {isSubmitting ? 'Sending Magic Link...' : 'Login with Magic Link'}
         </button>
-      </form>
+      </div>
 
       <div className={styles.divider}>OR</div>
 
-      <button onClick={loginWithGoogle} className={classnames(styles.googleButton, styles.buttonSubmit)}>
+      <button onClick={handleGoogleLogin} className={classnames(styles.googleButton, styles.buttonSubmit)}>
         Login with Google
       </button>
     </div>

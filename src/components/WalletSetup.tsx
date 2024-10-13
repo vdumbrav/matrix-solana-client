@@ -1,30 +1,51 @@
-import { useMemo } from 'react';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { clusterApiUrl } from '@solana/web3.js';
+import { useEffect, useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
-import { WalletContent } from './WalletContent';
-import { SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { PublicKey } from '@solana/web3.js';
+import magic from '../utils/magic';
+import { Wallet } from './Wallet/Wallet';
+import { SendToken } from './SendToken/SendToken';
+import { TransactionHistory } from './TransactionHistory/TransactionHistory';
+import { Faucet } from './Faucet/Faucet';
+import stylesWallet from './Wallet/Wallet.module.scss';
 
-interface IProps {
+interface WalletSetupProps {
   matrixClient: MatrixClient;
   roomId: string | null;
 }
 
-export const WalletSetup = ({ matrixClient, roomId }: IProps) => {
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+export const WalletSetup = ({ matrixClient, roomId }: WalletSetupProps) => {
+  const [publicKey, setPublicKey] = useState<PublicKey | null>(null);
 
-  const wallets = useMemo(() => [new SolflareWalletAdapter({ network })], [network]);
+  useEffect(() => {
+    const fetchPublicKey = async () => {
+      try {
+        const metadata = await magic.user.getInfo();
+        console.log('metadata:', metadata);
+        if (metadata.publicAddress) {
+          const publicKey = new PublicKey(metadata.publicAddress);
+          setPublicKey(publicKey);
+        } else {
+          console.error('Public address is null.');
+        }
+      } catch (error) {
+        console.error('Failed to fetch Solana public key:', error);
+      }
+    };
+
+    fetchPublicKey();
+  }, []);
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <WalletContent matrixClient={matrixClient} roomId={roomId} />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <>
+      <div className={stylesWallet.walletColumns}>
+        <SendToken matrixClient={matrixClient} roomId={roomId} publicKey={publicKey} />
+        <Faucet publicKey={publicKey} />
+      </div>
+
+      <div className={stylesWallet.walletColumns}>
+        <Wallet publicKey={publicKey} />
+        <TransactionHistory publicKey={publicKey} />
+      </div>
+    </>
   );
 };

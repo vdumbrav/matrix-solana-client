@@ -20,9 +20,11 @@ export const MatrixSSOCallback = () => {
 
       try {
         const matrixData = await matrixLoginWithToken(loginToken);
-        setMatrixAccessToken(matrixData.access_token);
-        setMatrixUserId(matrixData.user_id);
-
+        console.log('Matrix SSO callback data:', matrixData);
+        if (matrixData) {
+          setMatrixAccessToken(matrixData.access_token);
+          setMatrixUserId(matrixData.user_id);
+        }
         navigate('/');
       } catch (error) {
         console.error('Matrix SSO callback error:', error);

@@ -1,17 +1,12 @@
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import magic from '../utils/magic';
-import { matrixLoginWithPassword } from '../api/matrixApi';
-import {
-  getMatrixAuthFromLocalStorage,
-  saveMatrixAuthToLocalStorage,
-  clearMatrixAuthFromLocalStorage,
-} from '../utils/utils';
+import { getMatrixAuthFromLocalStorage, saveMatrixAuthToLocalStorage, clearMatrixAuthFromLocalStorage } from '../utils/utils';
 
 interface AuthContextProps {
   matrixAccessToken: string | null;
   matrixUserId: string | null;
-  loginWithPassword: (username: string, password: string) => Promise<void>;
+  loginWithMagicLink: (email: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setMatrixAccessToken: (token: string | null) => void;
@@ -21,7 +16,7 @@ interface AuthContextProps {
 export const AuthContext = createContext<AuthContextProps>({
   matrixAccessToken: null,
   matrixUserId: null,
-  loginWithPassword: async () => {},
+  loginWithMagicLink: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
   setMatrixAccessToken: () => {},
@@ -41,17 +36,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, []);
 
-  const loginWithPassword = async (username: string, password: string) => {
+  const loginWithMagicLink = async (email: string) => {
     try {
-      const data = await matrixLoginWithPassword(username, password);
-      setMatrixAccessToken(data.access_token);
-      setMatrixUserId(data.user_id);
-
-      saveMatrixAuthToLocalStorage(data.access_token, data.user_id);
-
+      await magic.auth.loginWithMagicLink({ email });
+      const { accessToken, userId } = await magic.user.getMetadata();
+      setMatrixAccessToken(accessToken);
+      setMatrixUserId(userId);
+      saveMatrixAuthToLocalStorage(accessToken, userId);
       navigate('/');
     } catch (error) {
-      console.error('Matrix login failed:', error);
+      console.error('Magic Link login failed:', error);
       throw error;
     }
   };
@@ -64,20 +58,15 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       });
     } catch (error) {
       console.error('Google login error:', error);
+      throw error;
     }
   };
 
   const logout = async () => {
-    try {
-      setMatrixAccessToken(null);
-      setMatrixUserId(null);
-
-      clearMatrixAuthFromLocalStorage();
-
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    setMatrixAccessToken(null);
+    setMatrixUserId(null);
+    clearMatrixAuthFromLocalStorage();
+    navigate('/login');
   };
 
   return (
@@ -85,7 +74,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       value={{
         matrixAccessToken,
         matrixUserId,
-        loginWithPassword,
+        loginWithMagicLink,
         loginWithGoogle,
         logout,
         setMatrixAccessToken,
