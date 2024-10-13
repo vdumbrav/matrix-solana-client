@@ -39,10 +39,10 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const loginWithMagicLink = async (email: string) => {
     try {
       await magic.auth.loginWithMagicLink({ email });
-      const { accessToken, userId } = await magic.user.getMetadata();
-      setMatrixAccessToken(accessToken);
-      setMatrixUserId(userId);
-      saveMatrixAuthToLocalStorage(accessToken, userId);
+      // const { accessToken, userId } = await magic.user.getInfo();
+      // setMatrixAccessToken(accessToken);
+      // setMatrixUserId(userId);
+      // saveMatrixAuthToLocalStorage(accessToken, userId);
       navigate('/');
     } catch (error) {
       console.error('Magic Link login failed:', error);

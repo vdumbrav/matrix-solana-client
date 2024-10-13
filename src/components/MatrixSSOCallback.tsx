@@ -2,6 +2,7 @@ import { useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { matrixLoginWithToken } from '../api/matrixApi';
+import { saveMatrixAuthToLocalStorage } from '../utils/utils';
 
 export const MatrixSSOCallback = () => {
   const { setMatrixAccessToken, setMatrixUserId } = useContext(AuthContext);
@@ -24,6 +25,7 @@ export const MatrixSSOCallback = () => {
         if (matrixData) {
           setMatrixAccessToken(matrixData.access_token);
           setMatrixUserId(matrixData.user_id);
+          saveMatrixAuthToLocalStorage(matrixData.access_token, matrixData.user_id);
         }
         navigate('/');
       } catch (error) {
