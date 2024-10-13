@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
-import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
-import { useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey, Transaction, SystemProgram, Connection } from '@solana/web3.js';
 import { toast } from 'react-toastify';
 import styles from './SendToken.module.scss';
 import magic from '../../utils/magic';
@@ -13,7 +12,6 @@ interface SendTokenProps {
 }
 
 export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) => {
-  const { connection } = useConnection();
   const [recipient, setRecipient] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [status, setStatus] = useState<string>('');
@@ -50,11 +48,10 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
     try {
       setStatus('Preparing transaction...');
-      const transaction = new Transaction();
       const recipientPublicKey = new PublicKey(recipient);
       const amountInLamports = parseFloat(amount) * 1e9; // Convert to lamports
 
-      transaction.add(
+      const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: recipientPublicKey,
@@ -62,6 +59,7 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
         }),
       );
 
+      const connection = new Connection(magic.solana.solanaConfig.rpcUrl);
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
@@ -73,10 +71,15 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
 
       const signedTransaction = Transaction.from(rawTransaction);
       const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-      const confirmation = await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      });
 
       if (confirmation.value.err) {
-        throw new Error('Transaction failed.');
+        throw new Error('Transaction failed during confirmation.');
       }
 
       setStatus(`Transaction successful! Signature: ${signature}`);
