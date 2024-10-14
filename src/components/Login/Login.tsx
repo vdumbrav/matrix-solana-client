@@ -4,7 +4,7 @@ import styles from './Login.module.scss';
 import classnames from 'classnames';
 
 export const Login = () => {
-  const { loginWithGoogle, loginWithMagicLink } = useContext(AuthContext);
+  const { loginWithGoogle, loginWithEmailOTP } = useContext(AuthContext);
   const [email, setEmail] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -13,7 +13,7 @@ export const Login = () => {
     try {
       setIsSubmitting(true);
       setErrorMessage(null);
-      await loginWithMagicLink(email);
+      await loginWithEmailOTP(email);
     } catch (error) {
       setErrorMessage('Failed to send Magic Link. Please check your email.');
       console.error('Magic Link login error:', error);
@@ -37,7 +37,7 @@ export const Login = () => {
       <h2>Login</h2>
 
       <div className={styles.form}>
-        <h3>Login with your Email</h3>
+        <h3>Login with Email OTP</h3>
         <input
           type="email"
           placeholder="Enter your email"

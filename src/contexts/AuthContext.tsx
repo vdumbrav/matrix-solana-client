@@ -1,12 +1,12 @@
 import { createContext, useState, useEffect, ReactNode, FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import magic from '../utils/magic';
-import { getMatrixAuthFromLocalStorage, saveMatrixAuthToLocalStorage, clearMatrixAuthFromLocalStorage } from '../utils/utils';
+import { getMatrixAuthFromLocalStorage, clearMatrixAuthFromLocalStorage, saveMatrixAuthToLocalStorage } from '../utils/utils';
 
 interface AuthContextProps {
   matrixAccessToken: string | null;
   matrixUserId: string | null;
-  loginWithMagicLink: (email: string) => Promise<void>;
+  loginWithEmailOTP: (email: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setMatrixAccessToken: (token: string | null) => void;
@@ -16,7 +16,7 @@ interface AuthContextProps {
 export const AuthContext = createContext<AuthContextProps>({
   matrixAccessToken: null,
   matrixUserId: null,
-  loginWithMagicLink: async () => {},
+  loginWithEmailOTP: async () => {},
   loginWithGoogle: async () => {},
   logout: async () => {},
   setMatrixAccessToken: () => {},
@@ -36,13 +36,14 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, []);
 
-  const loginWithMagicLink = async (email: string) => {
+  const loginWithEmailOTP = async (email: string) => {
     try {
-      await magic.auth.loginWithMagicLink({ email });
-      // const { accessToken, userId } = await magic.user.getInfo();
-      // setMatrixAccessToken(accessToken);
-      // setMatrixUserId(userId);
-      // saveMatrixAuthToLocalStorage(accessToken, userId);
+      let response = await magic.auth.loginWithEmailOTP({ email });
+      localStorage.setItem('resultMagic', JSON.stringify(response));
+      const {  issuer,  publicAddress} = await magic.user.getInfo();
+      setMatrixAccessToken(issuer);
+      setMatrixUserId(publicAddress);
+      saveMatrixAuthToLocalStorage(issuer || '', publicAddress || '');
       navigate('/');
     } catch (error) {
       console.error('Magic Link login failed:', error);
@@ -74,7 +75,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       value={{
         matrixAccessToken,
         matrixUserId,
-        loginWithMagicLink,
+        loginWithEmailOTP,
         loginWithGoogle,
         logout,
         setMatrixAccessToken,

@@ -56,10 +56,10 @@ export const SendToken = ({ matrixClient, roomId, publicKey }: SendTokenProps) =
           fromPubkey: publicKey,
           toPubkey: new PublicKey(recipient),
           lamports: parseFloat(amount) * 1e9,
-        })
+        }),
       );
 
-      const connection = new Connection(magic.solana.solanaConfig.rpcUrl, 'confirmed');
+      const connection = new Connection(magic.solana.solanaConfig.rpcUrl /* 'confirmed' */);
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
