@@ -5,6 +5,10 @@ import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfil
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    global: 'globalThis',
+  },
+
   css: {
     preprocessorOptions: {
       scss: {
@@ -28,9 +32,11 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      crypto: 'empty-module',
     },
   },
   build: {
+    target: 'esnext',
     rollupOptions: {
       plugins: [NodeModulesPolyfillPlugin()],
     },
